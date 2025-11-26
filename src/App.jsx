@@ -19,14 +19,14 @@ function AdBanner() {
   return (
     <div style={{
       width: '100%',
-      maxWidth: '1200px',
+      maxWidth: '800px',
       margin: '0 auto',
       padding: '0 24px',
     }}>
       <div style={{
-        margin: '24px 0',
+        margin: '16px 0',
         textAlign: 'center',
-        minHeight: '100px',
+        minHeight: '60px',
         background: '#FAFAFA',
         borderRadius: '12px',
         display: 'flex',
@@ -38,7 +38,7 @@ function AdBanner() {
           style={{ 
             display: 'block',
             width: '100%',
-            height: '90px',
+            height: '60px',
           }}
           data-ad-client="ca-pub-4907584103511840"
           data-ad-slot="3606948375"
