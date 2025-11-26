@@ -5,7 +5,7 @@ import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, ChevronDown,
 // ============================================
 // 광고 배너 컴포넌트 (재사용)
 // ============================================
-function AdBanner() {
+function AdBanner({ pageKey }) {
   useEffect(() => {
     try {
       if (window.adsbygoogle) {
@@ -14,7 +14,7 @@ function AdBanner() {
     } catch (e) {
       console.error('AdSense error:', e);
     }
-  }, []);
+}, [pageKey]);
 
   return (
     <div style={{
@@ -53,10 +53,10 @@ function AdBanner() {
 // ============================================
 // 푸터 컴포넌트 (재사용)
 // ============================================
-function Footer() {
+function Footer({ pageKey }) {
   return (
     <>
-      <AdBanner />
+      <AdBanner pageKey={pageKey} />
       <div style={{
         textAlign: 'center',
         padding: '16px 24px 32px',
@@ -220,7 +220,7 @@ function LoginPage({ onLogin }) {
       </div>
       
       {/* 로그인 페이지 하단 광고 */}
-      <Footer />
+           <Footer pageKey="login" />
     </div>
   );
 }
@@ -621,7 +621,7 @@ function MainDashboard({ data, onNavigate }) {
       </div>
 
       {/* 대시보드 하단 광고 */}
-      <Footer />
+            <Footer pageKey="login" />
     </div>
   );
 }
@@ -1092,7 +1092,7 @@ function ProductivityReport({ data, onNavigate }) {
       </div>
 
       {/* 생산성 리포트 하단 광고 */}
-      <Footer />
+            <Footer pageKey="login" />
     </div>
   );
 }
