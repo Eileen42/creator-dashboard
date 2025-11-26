@@ -549,6 +549,39 @@ function MainDashboard({ data, onNavigate }) {
         color: '#B0B0B8',
         fontSize: '12px',
       }}>
+        광고
+        {/* 광고 배너 */}
+      <div style={{
+        margin: '32px 0 16px 0',
+        textAlign: 'center',
+        minHeight: '90px',
+        background: '#FAFAFA',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <ins className="adsbygoogle"
+          style={{ display: 'block' }}
+          data-ad-client="ca-pub-49075841035118403606948375"
+          data-ad-slot="3606948375"
+          data-ad-format="horizontal"
+          data-full-width-responsive="true"
+        />
+      </div>
+
+      {/* 푸터 */}
+      <div style={{
+        textAlign: 'center',
+        marginTop: '16px',
+        marginBottom: '24px',
+        color: '#B0B0B8',
+        fontSize: '12px',
+      }}>
+        
+        Made with 💕 for Creators
+      </div>퍼블리셔 ID (ca-pub-49075841035118403606948375)
+
         Made with 💕 for Creators
       </div>
     </div>
