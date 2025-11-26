@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, ChevronDown, Plus, Sparkles, ArrowLeft, Target, Zap, PieChart as PieIcon, MessageCircle, Send, Loader2 } from 'lucide-react';
+import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, ChevronDown, Plus, Sparkles, ArrowLeft, Target, Zap, PieChart as PieIcon, MessageCircle, Send, Loader2, Settings, Pencil, Save, X, Eye, EyeOff, Trash2, Filter, Users } from 'lucide-react';
 
 // ============================================
 // 광고 배너 컴포넌트 (재사용)
@@ -14,7 +14,7 @@ function AdBanner({ pageKey }) {
     } catch (e) {
       console.error('AdSense error:', e);
     }
-}, [pageKey]);
+  }, [pageKey]);
 
   return (
     <div style={{
@@ -75,6 +75,7 @@ function Footer({ pageKey }) {
 export default function App() {
   const [currentPage, setCurrentPage] = useState('login');
   const [userData, setUserData] = useState(null);
+  const [channelData, setChannelData] = useState(null);
 
   // 샘플 데이터
   const sampleData = {
@@ -102,8 +103,97 @@ export default function App() {
     ],
   };
 
+  // 채널 관리 샘플 데이터
+  const sampleChannelData = [
+    {
+      id: 1,
+      brand: '로미네',
+      brandColor: '#FF6B9D',
+      platform: 'YouTube',
+      channelName: '로미네 Romine',
+      accountId: '@romine_official',
+      password: 'romine1234!',
+      email: 'romine@gmail.com',
+      channelUrl: 'https://youtube.com/@romine_official',
+      phone: '010-1234-5678',
+      ip: '',
+      memo: '메인 채널',
+    },
+    {
+      id: 2,
+      brand: '로미네',
+      brandColor: '#FF6B9D',
+      platform: 'TikTok',
+      channelName: '로미네',
+      accountId: '@romine_tt',
+      password: 'romine1234!',
+      email: 'romine@gmail.com',
+      channelUrl: 'https://tiktok.com/@romine_tt',
+      phone: '010-1234-5678',
+      ip: '',
+      memo: '',
+    },
+    {
+      id: 3,
+      brand: '로미네',
+      brandColor: '#FF6B9D',
+      platform: 'Instagram',
+      channelName: '로미네',
+      accountId: '@romine_insta',
+      password: 'romine1234!',
+      email: 'romine@gmail.com',
+      channelUrl: 'https://instagram.com/romine_insta',
+      phone: '',
+      ip: '',
+      memo: '',
+    },
+    {
+      id: 4,
+      brand: '히든셀럽',
+      brandColor: '#9B6BFF',
+      platform: 'YouTube',
+      channelName: '히든셀럽 Hidden Celeb',
+      accountId: '@hiddenceleb',
+      password: 'hidden5678!',
+      email: 'hidden@gmail.com',
+      channelUrl: 'https://youtube.com/@hiddenceleb',
+      phone: '010-9876-5432',
+      ip: '192.168.1.100',
+      memo: '서브 채널',
+    },
+    {
+      id: 5,
+      brand: '히든셀럽',
+      brandColor: '#9B6BFF',
+      platform: 'TikTok',
+      channelName: '히든셀럽',
+      accountId: '@hiddenceleb_tt',
+      password: 'hidden5678!',
+      email: 'hidden@gmail.com',
+      channelUrl: 'https://tiktok.com/@hiddenceleb_tt',
+      phone: '',
+      ip: '',
+      memo: '',
+    },
+    {
+      id: 6,
+      brand: '쇼핑채널',
+      brandColor: '#6BC5FF',
+      platform: 'YouTube',
+      channelName: '쇼핑의 정석',
+      accountId: '@shopping_master',
+      password: 'shop9999!',
+      email: 'shopping@gmail.com',
+      channelUrl: 'https://youtube.com/@shopping_master',
+      phone: '',
+      ip: '',
+      memo: '쇼핑 전용',
+    },
+  ];
+
   const handleLogin = () => {
     setUserData(sampleData);
+    setChannelData(sampleChannelData);
     setCurrentPage('dashboard');
   };
 
@@ -124,6 +214,13 @@ export default function App() {
       {currentPage === 'productivity' && userData && (
         <ProductivityReport 
           data={userData} 
+          onNavigate={setCurrentPage} 
+        />
+      )}
+      {currentPage === 'channels' && channelData && (
+        <ChannelManagement 
+          data={channelData}
+          setData={setChannelData}
           onNavigate={setCurrentPage} 
         />
       )}
@@ -219,8 +316,7 @@ function LoginPage({ onLogin }) {
         </div>
       </div>
       
-      {/* 로그인 페이지 하단 광고 */}
-           <Footer pageKey="login" />
+      <Footer pageKey="login" />
     </div>
   );
 }
@@ -282,23 +378,47 @@ function MainDashboard({ data, onNavigate }) {
             </p>
           </div>
           
-          <button style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 16px',
-            background: 'white',
-            border: '2px solid #EEE',
-            borderRadius: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#2D2D3A',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          }}>
-            {selectedPeriod}
-            <ChevronDown size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* 채널 관리 버튼 */}
+            <button 
+              onClick={() => onNavigate('channels')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: 'white',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(102,126,234,0.3)',
+              }}
+            >
+              <Users size={16} />
+              채널 관리
+            </button>
+            
+            <button style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: 'white',
+              border: '2px solid #EEE',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#2D2D3A',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              {selectedPeriod}
+              <ChevronDown size={16} />
+            </button>
+          </div>
         </div>
 
         {/* 요약 카드 3개 */}
@@ -620,8 +740,976 @@ function MainDashboard({ data, onNavigate }) {
         </div>
       </div>
 
-      {/* 대시보드 하단 광고 */}
-            <Footer pageKey="login" />
+      <Footer pageKey="dashboard" />
+    </div>
+  );
+}
+
+// ============================================
+// 채널 관리 페이지
+// ============================================
+function ChannelManagement({ data, setData, onNavigate }) {
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editData, setEditData] = useState([...data]);
+  const [showPasswords, setShowPasswords] = useState({});
+  const [filterBrand, setFilterBrand] = useState('all');
+  const [filterPlatform, setFilterPlatform] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // 브랜드 목록 추출
+  const brands = [...new Set(data.map(item => item.brand))];
+  const platforms = ['YouTube', 'TikTok', 'Instagram'];
+
+  // 필터링된 데이터
+  const filteredData = editData.filter(item => {
+    if (filterBrand !== 'all' && item.brand !== filterBrand) return false;
+    if (filterPlatform !== 'all' && item.platform !== filterPlatform) return false;
+    return true;
+  });
+
+  // 브랜드별 그룹핑
+  const groupedByBrand = filteredData.reduce((acc, item) => {
+    if (!acc[item.brand]) {
+      acc[item.brand] = {
+        color: item.brandColor,
+        channels: []
+      };
+    }
+    acc[item.brand].channels.push(item);
+    return acc;
+  }, {});
+
+  // 표시할 컬럼 결정 (데이터가 있는 컬럼만)
+  const hasPhone = editData.some(item => item.phone);
+  const hasIP = editData.some(item => item.ip);
+  const hasMemo = editData.some(item => item.memo);
+
+  // 비밀번호 토글
+  const togglePassword = (id) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+    
+    // 3초 후 자동 숨김
+    setTimeout(() => {
+      setShowPasswords(prev => ({
+        ...prev,
+        [id]: false
+      }));
+    }, 3000);
+  };
+
+  // 저장
+  const handleSave = () => {
+    setData(editData);
+    setIsEditMode(false);
+  };
+
+  // 취소
+  const handleCancel = () => {
+    setEditData([...data]);
+    setIsEditMode(false);
+  };
+
+  // 셀 수정
+  const handleCellChange = (id, field, value) => {
+    setEditData(prev => prev.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  // 행 삭제
+  const handleDelete = (id) => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      setEditData(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  // 새 채널 추가
+  const handleAddChannel = (newChannel) => {
+    const newId = Math.max(...editData.map(d => d.id)) + 1;
+    setEditData(prev => [...prev, { ...newChannel, id: newId }]);
+    setShowAddModal(false);
+  };
+
+  // 플랫폼 아이콘
+  const getPlatformIcon = (platform) => {
+    switch(platform) {
+      case 'YouTube': return <Youtube size={16} />;
+      case 'TikTok': return <Music2 size={16} />;
+      case 'Instagram': return <Instagram size={16} />;
+      default: return <Video size={16} />;
+    }
+  };
+
+  // 통계
+  const stats = {
+    totalBrands: brands.length,
+    totalChannels: data.length,
+    youtube: data.filter(d => d.platform === 'YouTube').length,
+    tiktok: data.filter(d => d.platform === 'TikTok').length,
+    instagram: data.filter(d => d.platform === 'Instagram').length,
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+        {/* 헤더 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button 
+              onClick={() => onNavigate('dashboard')}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              }}
+            >
+              <ArrowLeft size={20} color="#2D2D3A" />
+            </button>
+            <div>
+              <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#2D2D3A', margin: 0 }}>
+                👤 채널 관리
+              </h1>
+              <p style={{ color: '#8E8E9A', margin: '4px 0 0 0', fontSize: '14px' }}>
+                브랜드별 채널 정보를 관리하세요
+              </p>
+            </div>
+          </div>
+
+          {/* 편집 버튼 */}
+          {isEditMode ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleCancel}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 16px',
+                  background: '#F5F5F5',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#666',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={16} />
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 16px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <Save size={16} />
+                저장
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsEditMode(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <Pencil size={16} />
+              편집
+            </button>
+          )}
+        </div>
+
+        {/* 통계 카드 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: '12px',
+          marginBottom: '24px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ color: '#8E8E9A', fontSize: '12px', margin: '0 0 4px 0' }}>총 브랜드</p>
+            <p style={{ color: '#2D2D3A', fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.totalBrands}</p>
+          </div>
+          <div style={{
+            background: 'white',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ color: '#8E8E9A', fontSize: '12px', margin: '0 0 4px 0' }}>총 채널</p>
+            <p style={{ color: '#2D2D3A', fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.totalChannels}</p>
+          </div>
+          <div style={{
+            background: '#FF000010',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{ color: '#8E8E9A', fontSize: '12px', margin: '0 0 4px 0' }}>YouTube</p>
+            <p style={{ color: '#FF0000', fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.youtube}</p>
+          </div>
+          <div style={{
+            background: '#00000010',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{ color: '#8E8E9A', fontSize: '12px', margin: '0 0 4px 0' }}>TikTok</p>
+            <p style={{ color: '#000', fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.tiktok}</p>
+          </div>
+          <div style={{
+            background: '#E4405F10',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{ color: '#8E8E9A', fontSize: '12px', margin: '0 0 4px 0' }}>Instagram</p>
+            <p style={{ color: '#E4405F', fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.instagram}</p>
+          </div>
+        </div>
+
+        {/* 필터 & 추가 버튼 */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Filter size={16} color="#8E8E9A" />
+            <select
+              value={filterBrand}
+              onChange={(e) => setFilterBrand(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #E8E8E8',
+                fontSize: '13px',
+                color: '#2D2D3A',
+                background: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">모든 브랜드</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            <select
+              value={filterPlatform}
+              onChange={(e) => setFilterPlatform(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #E8E8E8',
+                fontSize: '13px',
+                color: '#2D2D3A',
+                background: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">모든 플랫폼</option>
+              {platforms.map(platform => (
+                <option key={platform} value={platform}>{platform}</option>
+              ))}
+            </select>
+          </div>
+
+          {isEditMode && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                background: '#FF6B9D',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <Plus size={14} />
+              새 채널 추가
+            </button>
+          )}
+        </div>
+
+        {/* 테이블 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '13px',
+            }}>
+              <thead>
+                <tr style={{ background: '#FAFAFA' }}>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>브랜드</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>플랫폼</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>채널명</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>아이디</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>비밀번호</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>이메일</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>채널 URL</th>
+                  {hasPhone && <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>폰 번호</th>}
+                  {hasIP && <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>IP</th>}
+                  {hasMemo && <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>메모</th>}
+                  {isEditMode && <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: '600', color: '#666', width: '50px' }}></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.map((item, index) => (
+                  <tr 
+                    key={item.id}
+                    style={{ 
+                      borderBottom: '1px solid #F0F0F0',
+                      background: index % 2 === 0 ? 'white' : '#FAFAFA',
+                    }}
+                  >
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 10px',
+                        background: item.brandColor + '20',
+                        color: item.brandColor,
+                        borderRadius: '6px',
+                        fontWeight: '600',
+                        fontSize: '12px',
+                      }}>
+                        {item.brand}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {getPlatformIcon(item.platform)}
+                        <span>{item.platform}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={item.channelName}
+                          onChange={(e) => handleCellChange(item.id, 'channelName', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #E0E0E0',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      ) : item.channelName}
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#666' }}>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={item.accountId}
+                          onChange={(e) => handleCellChange(item.id, 'accountId', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #E0E0E0',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      ) : item.accountId}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={item.password}
+                            onChange={(e) => handleCellChange(item.id, 'password', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #E0E0E0',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {showPasswords[item.id] ? item.password : '••••••••'}
+                            </span>
+                            <button
+                              onClick={() => togglePassword(item.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                color: '#999',
+                              }}
+                            >
+                              {showPasswords[item.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#666' }}>
+                      {isEditMode ? (
+                        <input
+                          type="email"
+                          value={item.email}
+                          onChange={(e) => handleCellChange(item.id, 'email', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #E0E0E0',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      ) : item.email}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {isEditMode ? (
+                        <input
+                          type="url"
+                          value={item.channelUrl}
+                          onChange={(e) => handleCellChange(item.id, 'channelUrl', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #E0E0E0',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      ) : (
+                        <a 
+                          href={item.channelUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ color: '#667eea', textDecoration: 'none' }}
+                        >
+                          바로가기 ↗
+                        </a>
+                      )}
+                    </td>
+                    {hasPhone && (
+                      <td style={{ padding: '12px 16px', color: '#666' }}>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={item.phone || ''}
+                            onChange={(e) => handleCellChange(item.id, 'phone', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #E0E0E0',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                            }}
+                          />
+                        ) : (item.phone || '-')}
+                      </td>
+                    )}
+                    {hasIP && (
+                      <td style={{ padding: '12px 16px', color: '#666', fontFamily: 'monospace' }}>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={item.ip || ''}
+                            onChange={(e) => handleCellChange(item.id, 'ip', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #E0E0E0',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                            }}
+                          />
+                        ) : (item.ip || '-')}
+                      </td>
+                    )}
+                    {hasMemo && (
+                      <td style={{ padding: '12px 16px', color: '#666' }}>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={item.memo || ''}
+                            onChange={(e) => handleCellChange(item.id, 'memo', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #E0E0E0',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                            }}
+                          />
+                        ) : (item.memo || '-')}
+                      </td>
+                    )}
+                    {isEditMode && (
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#FF6B6B',
+                            padding: '4px',
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 추가 모달 */}
+        {showAddModal && (
+          <AddChannelModal
+            brands={brands}
+            platforms={platforms}
+            onAdd={handleAddChannel}
+            onClose={() => setShowAddModal(false)}
+          />
+        )}
+      </div>
+
+      <Footer pageKey="channels" />
+    </div>
+  );
+}
+
+// ============================================
+// 채널 추가 모달
+// ============================================
+function AddChannelModal({ brands, platforms, onAdd, onClose }) {
+  const [newChannel, setNewChannel] = useState({
+    brand: brands[0] || '',
+    brandColor: '#FF6B9D',
+    platform: 'YouTube',
+    channelName: '',
+    accountId: '',
+    password: '',
+    email: '',
+    channelUrl: '',
+    phone: '',
+    ip: '',
+    memo: '',
+  });
+  const [isNewBrand, setIsNewBrand] = useState(false);
+
+  const brandColors = ['#FF6B9D', '#9B6BFF', '#6BC5FF', '#4CAF50', '#FF9800', '#E91E63'];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newChannel.brand || !newChannel.channelName) {
+      alert('브랜드명과 채널명은 필수입니다.');
+      return;
+    }
+    onAdd(newChannel);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '20px',
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '20px',
+        padding: '32px',
+        maxWidth: '500px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#2D2D3A' }}>
+            새 채널 추가
+          </h2>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* 브랜드 선택 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              브랜드 *
+            </label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setIsNewBrand(false)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: !isNewBrand ? '#667eea' : '#F0F0F0',
+                  color: !isNewBrand ? 'white' : '#666',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                기존 브랜드
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsNewBrand(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isNewBrand ? '#667eea' : '#F0F0F0',
+                  color: isNewBrand ? 'white' : '#666',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                새 브랜드
+              </button>
+            </div>
+            {isNewBrand ? (
+              <div>
+                <input
+                  type="text"
+                  placeholder="새 브랜드명"
+                  value={newChannel.brand}
+                  onChange={(e) => setNewChannel(prev => ({ ...prev, brand: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    marginBottom: '8px',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {brandColors.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewChannel(prev => ({ ...prev, brandColor: color }))}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: color,
+                        border: newChannel.brandColor === color ? '3px solid #333' : 'none',
+                        cursor: 'pointer',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <select
+                value={newChannel.brand}
+                onChange={(e) => setNewChannel(prev => ({ ...prev, brand: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                }}
+              >
+                {brands.map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* 플랫폼 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              플랫폼 *
+            </label>
+            <select
+              value={newChannel.platform}
+              onChange={(e) => setNewChannel(prev => ({ ...prev, platform: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '10px',
+                fontSize: '14px',
+              }}
+            >
+              {platforms.map(platform => (
+                <option key={platform} value={platform}>{platform}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 채널명 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              채널명 *
+            </label>
+            <input
+              type="text"
+              value={newChannel.channelName}
+              onChange={(e) => setNewChannel(prev => ({ ...prev, channelName: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '10px',
+                fontSize: '14px',
+              }}
+            />
+          </div>
+
+          {/* 아이디 & 비밀번호 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                아이디
+              </label>
+              <input
+                type="text"
+                value={newChannel.accountId}
+                onChange={(e) => setNewChannel(prev => ({ ...prev, accountId: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                비밀번호
+              </label>
+              <input
+                type="text"
+                value={newChannel.password}
+                onChange={(e) => setNewChannel(prev => ({ ...prev, password: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 이메일 & URL */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              이메일
+            </label>
+            <input
+              type="email"
+              value={newChannel.email}
+              onChange={(e) => setNewChannel(prev => ({ ...prev, email: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '10px',
+                fontSize: '14px',
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              채널 URL
+            </label>
+            <input
+              type="url"
+              value={newChannel.channelUrl}
+              onChange={(e) => setNewChannel(prev => ({ ...prev, channelUrl: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '10px',
+                fontSize: '14px',
+              }}
+            />
+          </div>
+
+          {/* 폰 & IP */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                폰 번호
+              </label>
+              <input
+                type="text"
+                value={newChannel.phone}
+                onChange={(e) => setNewChannel(prev => ({ ...prev, phone: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                IP 주소
+              </label>
+              <input
+                type="text"
+                value={newChannel.ip}
+                onChange={(e) => setNewChannel(prev => ({ ...prev, ip: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 메모 */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+              메모
+            </label>
+            <input
+              type="text"
+              value={newChannel.memo}
+              onChange={(e) => setNewChannel(prev => ({ ...prev, memo: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '10px',
+                fontSize: '14px',
+              }}
+            />
+          </div>
+
+          {/* 버튼 */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: '12px',
+                border: '1px solid #E0E0E0',
+                background: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #FF6B9D 0%, #9B6BFF 100%)',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              추가
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1091,8 +2179,7 @@ function ProductivityReport({ data, onNavigate }) {
         </div>
       </div>
 
-      {/* 생산성 리포트 하단 광고 */}
-            <Footer pageKey="login" />
+      <Footer pageKey="productivity" />
     </div>
   );
 }
