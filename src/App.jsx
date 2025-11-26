@@ -542,14 +542,6 @@ function MainDashboard({ data, onNavigate }) {
         </div>
       </div>
 
-      {/* 푸터 */}
-      <div style={{
-        textAlign: 'center',
-        marginTop: '32px',
-        color: '#B0B0B8',
-        fontSize: '12px',
-      }}>
-        광고
         {/* 광고 배너 */}
       <div style={{
         margin: '32px 0 16px 0',
@@ -580,11 +572,7 @@ function MainDashboard({ data, onNavigate }) {
       }}>
         
         Made with 💕 for Creators
-      </div>퍼블리셔 ID (ca-pub-49075841035118403606948375)
-
-        Made with 💕 for Creators
-      </div>
-    </div>
+       </div>
   );
 }
 
