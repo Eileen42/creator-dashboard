@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, ChevronDown, Plus, Sparkles, ArrowLeft, Target, Zap, PieChart as PieIcon, MessageCircle, Send, Loader2, Settings, Pencil, Save, X, Eye, EyeOff, Trash2, Filter, Users, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, Plus, ArrowLeft, Target, Zap, MessageCircle, Send, Loader2, Pencil, Save, X, Eye, EyeOff, Trash2, Users, LogOut } from 'lucide-react';
 
 // ============================================
 // 설정값
@@ -11,11 +11,43 @@ const CONFIG = {
 };
 
 // ============================================
+// 테마 색상 (밝고 중성적인 컬러)
+// ============================================
+const THEME = {
+  // 배경
+  bgPrimary: '#F8F9FC',      // 메인 배경 - 밝은 회색빛 화이트
+  bgSecondary: '#FFFFFF',     // 카드 배경 - 순수 화이트
+  bgTertiary: '#EEF1F6',      // 섹션 배경 - 연한 회색
+  
+  // 텍스트
+  textPrimary: '#1A1D26',     // 메인 텍스트 - 진한 차콜
+  textSecondary: '#6B7280',   // 보조 텍스트 - 중간 회색
+  textMuted: '#9CA3AF',       // 흐린 텍스트 - 연한 회색
+  
+  // 액센트 (중성적이면서 세련된)
+  accent1: '#6366F1',         // 인디고 - 메인 액센트
+  accent2: '#8B5CF6',         // 바이올렛 - 보조 액센트
+  accent3: '#06B6D4',         // 시안 - 포인트
+  accent4: '#10B981',         // 에메랄드 - 성공/긍정
+  accent5: '#F59E0B',         // 앰버 - 경고/주목
+  
+  // 플랫폼 컬러
+  youtube: '#FF0000',
+  tiktok: '#000000',
+  instagram: '#E1306C',
+  
+  // 그림자
+  shadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05)',
+  shadowHover: '0 4px 12px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.08)',
+};
+
+// ============================================
 // API 함수들
 // ============================================
 async function callBackend(action, params = {}) {
   const url = new URL(CONFIG.APPS_SCRIPT_URL);
   url.searchParams.append('action', action);
+  
   Object.keys(params).forEach(key => {
     if (typeof params[key] === 'object') {
       url.searchParams.append(key, JSON.stringify(params[key]));
@@ -35,7 +67,7 @@ async function callBackend(action, params = {}) {
 }
 
 // ============================================
-// 광고 배너 컴포넌트 (재사용)
+// 광고 배너 컴포넌트
 // ============================================
 function AdBanner({ pageKey }) {
   useEffect(() => {
@@ -59,7 +91,7 @@ function AdBanner({ pageKey }) {
         margin: '16px 0',
         textAlign: 'center',
         minHeight: '60px',
-        background: '#FAFAFA',
+        background: THEME.bgTertiary,
         borderRadius: '12px',
         display: 'flex',
         alignItems: 'center',
@@ -83,7 +115,7 @@ function AdBanner({ pageKey }) {
 }
 
 // ============================================
-// 푸터 컴포넌트 (재사용)
+// 푸터 컴포넌트
 // ============================================
 function Footer({ pageKey }) {
   return (
@@ -92,10 +124,10 @@ function Footer({ pageKey }) {
       <div style={{
         textAlign: 'center',
         padding: '16px 24px 32px',
-        color: '#B0B0B8',
+        color: THEME.textMuted,
         fontSize: '12px',
       }}>
-        Made with 💕 for Creators
+        Made with 💜 for Creators
       </div>
     </>
   );
@@ -111,41 +143,10 @@ export default function App() {
   const [channels, setChannels] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
 
-  // Google Identity Services 초기화
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: CONFIG.GOOGLE_CLIENT_ID,
-          callback: handleGoogleLogin,
-        });
-      }
-    };
-
-    // 로컬 스토리지에서 사용자 정보 복원
-    const savedUser = localStorage.getItem('dashboardUser');
-    const savedSpreadsheetId = localStorage.getItem('dashboardSpreadsheetId');
-    if (savedUser && savedSpreadsheetId) {
-      setUser(JSON.parse(savedUser));
-      setSpreadsheetId(savedSpreadsheetId);
-      setCurrentPage('dashboard');
-      loadChannels(savedSpreadsheetId);
-    }
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
-
-  // Google 로그인 처리
-  const handleGoogleLogin = async (response) => {
+  // Google 로그인 콜백
+  const handleGoogleLogin = useCallback(async (response) => {
     setIsLoading(true);
     setError(null);
     
@@ -176,53 +177,103 @@ export default function App() {
         
         setCurrentPage('dashboard');
       } else {
-        setError('로그인 처리 중 오류가 발생했습니다: ' + result.error);
+        setError('로그인 처리 중 오류: ' + (result.error || '알 수 없는 오류'));
       }
     } catch (err) {
-      setError('로그인 중 오류가 발생했습니다: ' + err.message);
+      console.error('Login error:', err);
+      setError('로그인 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Google Identity Services 초기화
+  useEffect(() => {
+    // 이미 로그인된 사용자 확인
+    const savedUser = localStorage.getItem('dashboardUser');
+    const savedSpreadsheetId = localStorage.getItem('dashboardSpreadsheetId');
+    
+    if (savedUser && savedSpreadsheetId) {
+      setUser(JSON.parse(savedUser));
+      setSpreadsheetId(savedSpreadsheetId);
+      setCurrentPage('dashboard');
+      loadChannels(savedSpreadsheetId);
+    }
+
+    // Google 스크립트 로드
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      // 스크립트 로드 완료 후 약간의 지연
+      setTimeout(() => {
+        setGoogleLoaded(true);
+      }, 100);
+    };
+    
+    script.onerror = () => {
+      setError('Google 로그인 서비스를 불러오지 못했습니다.');
+    };
+    
+    document.head.appendChild(script);
+
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
 
   // 채널 데이터 로드
   const loadChannels = async (ssId) => {
-    const result = await callBackend('getChannels', { spreadsheetId: ssId });
-    if (result.success) {
-      setChannels(result.channels || []);
+    try {
+      const result = await callBackend('getChannels', { spreadsheetId: ssId });
+      if (result.success) {
+        setChannels(result.channels || []);
+      }
+    } catch (err) {
+      console.error('Load channels error:', err);
     }
   };
 
   // 채널 저장
   const saveChannel = async (channelData) => {
     setIsLoading(true);
-    const result = await callBackend('saveChannel', {
-      spreadsheetId: spreadsheetId,
-      userId: user.userId,
-      channelData: channelData
-    });
-    
-    if (result.success) {
-      await loadChannels(spreadsheetId);
+    try {
+      const result = await callBackend('saveChannel', {
+        spreadsheetId: spreadsheetId,
+        userId: user.userId,
+        channelData: channelData
+      });
+      
+      if (result.success) {
+        await loadChannels(spreadsheetId);
+      }
+      return result;
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    return result;
   };
 
   // 채널 삭제
   const deleteChannel = async (channelId) => {
     setIsLoading(true);
-    const result = await callBackend('deleteChannel', {
-      spreadsheetId: spreadsheetId,
-      userId: user.userId,
-      channelId: channelId
-    });
-    
-    if (result.success) {
-      await loadChannels(spreadsheetId);
+    try {
+      const result = await callBackend('deleteChannel', {
+        spreadsheetId: spreadsheetId,
+        userId: user.userId,
+        channelId: channelId
+      });
+      
+      if (result.success) {
+        await loadChannels(spreadsheetId);
+      }
+      return result;
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    return result;
   };
 
   // 로그아웃
@@ -235,7 +286,7 @@ export default function App() {
     setCurrentPage('login');
   };
 
-  // 샘플 대시보드 데이터 (채널 데이터 기반으로 계산)
+  // 대시보드 데이터 계산
   const getDashboardData = () => {
     const brands = [...new Set(channels.map(ch => ch.brand))];
     const platformCounts = {
@@ -249,7 +300,7 @@ export default function App() {
       period: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' }),
       channels: brands.map((brand, idx) => {
         const brandChannels = channels.filter(ch => ch.brand === brand);
-        const colors = ['#FF6B9D', '#9B6BFF', '#6BC5FF', '#4CAF50', '#FF9800'];
+        const colors = [THEME.accent1, THEME.accent2, THEME.accent3, THEME.accent4, THEME.accent5];
         return {
           name: brand,
           platform: 'youtube',
@@ -260,13 +311,13 @@ export default function App() {
         };
       }),
       platforms: [
-        { name: 'YouTube', uploads: platformCounts.YouTube * 8, revenue: platformCounts.YouTube * 150000, color: '#FF6B9D' },
-        { name: 'TikTok', uploads: platformCounts.TikTok * 6, revenue: platformCounts.TikTok * 20000, color: '#6BC5FF' },
-        { name: 'Instagram', uploads: platformCounts.Instagram * 10, revenue: platformCounts.Instagram * 15000, color: '#9B6BFF' },
+        { name: 'YouTube', uploads: platformCounts.YouTube * 8, revenue: platformCounts.YouTube * 150000, color: THEME.youtube },
+        { name: 'TikTok', uploads: platformCounts.TikTok * 6, revenue: platformCounts.TikTok * 20000, color: THEME.tiktok },
+        { name: 'Instagram', uploads: platformCounts.Instagram * 10, revenue: platformCounts.Instagram * 15000, color: THEME.instagram },
       ],
-      originalContents: channels.length * 2,
-      totalUploads: channels.length * 8,
-      activePlatforms: Object.values(platformCounts).filter(c => c > 0).length,
+      originalContents: channels.length * 2 || 10,
+      totalUploads: channels.length * 8 || 62,
+      activePlatforms: Object.values(platformCounts).filter(c => c > 0).length || 3,
       monthlyData: [
         { month: '7월', revenue: 380000, contents: 8, uploads: 45, pes: 10.2 },
         { month: '8월', revenue: 420000, contents: 9, uploads: 52, pes: 12.1 },
@@ -281,7 +332,14 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'login':
-        return <LoginPage onLogin={handleGoogleLogin} isLoading={isLoading} error={error} />;
+        return (
+          <LoginPage 
+            isLoading={isLoading} 
+            error={error} 
+            googleLoaded={googleLoaded}
+            onGoogleLogin={handleGoogleLogin}
+          />
+        );
       case 'dashboard':
         return (
           <DashboardPage 
@@ -292,7 +350,12 @@ export default function App() {
           />
         );
       case 'productivity':
-        return <ProductivityPage data={getDashboardData()} onBack={() => setCurrentPage('dashboard')} />;
+        return (
+          <ProductivityPage 
+            data={getDashboardData()} 
+            onBack={() => setCurrentPage('dashboard')} 
+          />
+        );
       case 'channels':
         return (
           <ChannelsPage 
@@ -306,17 +369,44 @@ export default function App() {
       case 'ai':
         return <AIPage onBack={() => setCurrentPage('dashboard')} />;
       default:
-        return <LoginPage onLogin={handleGoogleLogin} isLoading={isLoading} error={error} />;
+        return (
+          <LoginPage 
+            isLoading={isLoading} 
+            error={error}
+            googleLoaded={googleLoaded}
+            onGoogleLogin={handleGoogleLogin}
+          />
+        );
     }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F0F1E 100%)',
+      background: THEME.bgPrimary,
       fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
       {renderPage()}
+      
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        * {
+          box-sizing: border-box;
+        }
+        
+        input, select, button {
+          font-family: inherit;
+        }
+        
+        input:focus, select:focus {
+          outline: none;
+          border-color: ${THEME.accent1};
+        }
+      `}</style>
     </div>
   );
 }
@@ -324,22 +414,39 @@ export default function App() {
 // ============================================
 // 로그인 페이지
 // ============================================
-function LoginPage({ onLogin, isLoading, error }) {
+function LoginPage({ isLoading, error, googleLoaded, onGoogleLogin }) {
+  const [buttonRendered, setButtonRendered] = useState(false);
+
+  // Google 버튼 렌더링 (컴포넌트 내부에서 처리)
   useEffect(() => {
-    // Google 로그인 버튼 렌더링
-    if (window.google && !isLoading) {
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-login-button'),
-        { 
-          theme: 'filled_blue',
-          size: 'large',
-          width: 280,
-          text: 'continue_with',
-          shape: 'rectangular',
+    if (googleLoaded && window.google && !isLoading && !buttonRendered) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: CONFIG.GOOGLE_CLIENT_ID,
+          callback: onGoogleLogin,
+        });
+        
+        const buttonContainer = document.getElementById('google-login-button');
+        if (buttonContainer) {
+          buttonContainer.innerHTML = '';
+          window.google.accounts.id.renderButton(
+            buttonContainer,
+            { 
+              theme: 'outline',
+              size: 'large',
+              width: 280,
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'center',
+            }
+          );
+          setButtonRendered(true);
         }
-      );
+      } catch (err) {
+        console.error('Google button render error:', err);
+      }
     }
-  }, [isLoading]);
+  }, [googleLoaded, isLoading, buttonRendered, onGoogleLogin]);
 
   return (
     <div style={{
@@ -348,54 +455,69 @@ function LoginPage({ onLogin, isLoading, error }) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '20px',
+      background: `linear-gradient(135deg, ${THEME.bgPrimary} 0%, ${THEME.bgTertiary} 100%)`,
     }}>
       <div style={{
-        background: 'rgba(255,255,255,0.05)',
+        background: THEME.bgSecondary,
         borderRadius: '24px',
-        padding: '48px',
+        padding: '48px 40px',
         textAlign: 'center',
-        maxWidth: '400px',
+        maxWidth: '420px',
         width: '100%',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: THEME.shadow,
       }}>
+        {/* 로고 */}
         <div style={{
-          fontSize: '48px',
-          marginBottom: '16px',
+          width: '72px',
+          height: '72px',
+          borderRadius: '20px',
+          background: `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
         }}>
-          📊
+          <span style={{ fontSize: '32px' }}>📊</span>
         </div>
+
+        {/* 타이틀 */}
         <h1 style={{
-          color: 'white',
-          fontSize: '28px',
+          color: THEME.textPrimary,
+          fontSize: '26px',
           fontWeight: '700',
           marginBottom: '8px',
+          letterSpacing: '-0.5px',
         }}>
           크리에이터 대시보드
         </h1>
+        
         <p style={{
-          color: '#B0B0B8',
-          fontSize: '14px',
-          marginBottom: '32px',
+          color: THEME.textSecondary,
+          fontSize: '15px',
+          marginBottom: '36px',
           lineHeight: '1.6',
         }}>
           멀티 플랫폼 채널을 한눈에 관리하세요
         </p>
 
+        {/* 에러 메시지 */}
         {error && (
           <div style={{
-            background: 'rgba(255, 107, 157, 0.2)',
-            border: '1px solid rgba(255, 107, 157, 0.3)',
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
             borderRadius: '12px',
-            padding: '12px',
+            padding: '14px 16px',
             marginBottom: '24px',
-            color: '#FF6B9D',
-            fontSize: '13px',
+            color: '#DC2626',
+            fontSize: '14px',
+            textAlign: 'left',
           }}>
-            {error}
+            ⚠️ {error}
           </div>
         )}
 
+        {/* 로그인 버튼 영역 */}
         {isLoading ? (
           <div style={{
             display: 'flex',
@@ -403,36 +525,66 @@ function LoginPage({ onLogin, isLoading, error }) {
             justifyContent: 'center',
             gap: '12px',
             padding: '16px',
-            color: 'white',
+            color: THEME.textSecondary,
           }}>
-            <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+            <Loader2 
+              size={24} 
+              color={THEME.accent1}
+              style={{ animation: 'spin 1s linear infinite' }} 
+            />
             <span>로그인 중...</span>
           </div>
         ) : (
-          <div id="google-login-button" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: '24px',
-          }} />
+          <div style={{ marginBottom: '24px' }}>
+            {/* Google 로그인 버튼 컨테이너 */}
+            <div 
+              id="google-login-button" 
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                minHeight: '44px',
+              }}
+            />
+            
+            {/* Google 로딩 중 표시 */}
+            {!googleLoaded && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px',
+                color: THEME.textMuted,
+                fontSize: '14px',
+              }}>
+                <Loader2 
+                  size={18} 
+                  style={{ animation: 'spin 1s linear infinite' }} 
+                />
+                Google 로그인 로딩 중...
+              </div>
+            )}
+          </div>
         )}
 
-        <p style={{
-          color: '#6B6B75',
-          fontSize: '12px',
-          marginTop: '24px',
-          lineHeight: '1.6',
+        {/* 안내 문구 */}
+        <div style={{
+          background: THEME.bgTertiary,
+          borderRadius: '12px',
+          padding: '16px',
+          marginTop: '8px',
         }}>
-          로그인하면 Google Drive에<br/>
-          개인 데이터가 안전하게 저장됩니다
-        </p>
+          <p style={{
+            color: THEME.textSecondary,
+            fontSize: '13px',
+            lineHeight: '1.6',
+            margin: 0,
+          }}>
+            🔒 로그인하면 <strong>본인의 Google Drive</strong>에<br/>
+            데이터가 안전하게 저장됩니다
+          </p>
+        </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
@@ -444,7 +596,7 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
   const totalRevenue = data.platforms.reduce((sum, p) => sum + p.revenue, 0);
 
   return (
-    <div style={{ paddingBottom: '20px' }}>
+    <div style={{ paddingBottom: '20px', maxWidth: '800px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{
         padding: '20px 24px',
@@ -458,25 +610,25 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
               src={user.profileImage} 
               alt="프로필"
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                border: '2px solid rgba(255,255,255,0.2)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                border: `2px solid ${THEME.bgTertiary}`,
               }}
             />
           )}
           <div>
-            <div style={{ color: 'white', fontWeight: '600', fontSize: '15px' }}>
-              {data.userName}님의 대시보드
+            <div style={{ color: THEME.textPrimary, fontWeight: '600', fontSize: '16px' }}>
+              {data.userName}님 👋
             </div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{data.period}</div>
+            <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{data.period}</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => onNavigate('channels')}
             style={{
-              background: 'linear-gradient(135deg, #9B6BFF 0%, #6B4BCC 100%)',
+              background: `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)`,
               border: 'none',
               borderRadius: '12px',
               padding: '10px 16px',
@@ -487,6 +639,7 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
             }}
           >
             <Users size={16} />
@@ -495,11 +648,11 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
           <button
             onClick={onLogout}
             style={{
-              background: 'rgba(255,255,255,0.1)',
+              background: THEME.bgTertiary,
               border: 'none',
               borderRadius: '12px',
               padding: '10px',
-              color: '#B0B0B8',
+              color: THEME.textSecondary,
               cursor: 'pointer',
             }}
           >
@@ -520,27 +673,27 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
             label="원본 콘텐츠"
             value={data.originalContents}
             unit="개"
-            color="#FF6B9D"
+            color={THEME.accent1}
           />
           <SummaryCard 
             icon={<TrendingUp size={20} />}
             label="총 업로드"
             value={data.totalUploads}
             unit="개"
-            color="#6BC5FF"
+            color={THEME.accent3}
           />
           <SummaryCard 
             icon={<DollarSign size={20} />}
             label="이번 달 수익"
             value={`₩${totalRevenue.toLocaleString()}`}
-            color="#9B6BFF"
+            color={THEME.accent2}
           />
           <SummaryCard 
             icon={<Target size={20} />}
             label="활성 플랫폼"
             value={data.activePlatforms}
             unit="개"
-            color="#4CAF50"
+            color={THEME.accent4}
           />
         </div>
       </div>
@@ -548,31 +701,25 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
       {/* 월별 수익 차트 */}
       <div style={{ padding: '0 24px', marginBottom: '24px' }}>
         <div style={{
-          background: 'rgba(255,255,255,0.05)',
+          background: THEME.bgSecondary,
           borderRadius: '20px',
           padding: '20px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: THEME.shadow,
         }}>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>
+          <h3 style={{ color: THEME.textPrimary, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
             📈 월별 수익 추이
           </h3>
           <div style={{ height: '200px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.monthlyData}>
-                <XAxis dataKey="month" tick={{ fill: '#B0B0B8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#B0B0B8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/10000}만`} />
+                <XAxis dataKey="month" tick={{ fill: THEME.textSecondary, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: THEME.textSecondary, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/10000}만`} />
                 <Tooltip 
                   formatter={(value) => [`₩${value.toLocaleString()}`, '수익']}
-                  contentStyle={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  labelStyle={{ color: 'white' }}
+                  contentStyle={{ background: THEME.bgSecondary, border: `1px solid ${THEME.bgTertiary}`, borderRadius: '8px' }}
+                  labelStyle={{ color: THEME.textPrimary }}
                 />
-                <Bar dataKey="revenue" fill="url(#revenueGradient)" radius={[8, 8, 0, 0]} />
-                <defs>
-                  <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF6B9D" />
-                    <stop offset="100%" stopColor="#9B6BFF" />
-                  </linearGradient>
-                </defs>
+                <Bar dataKey="revenue" fill={THEME.accent1} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -582,41 +729,41 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
       {/* 플랫폼별 현황 */}
       <div style={{ padding: '0 24px', marginBottom: '24px' }}>
         <div style={{
-          background: 'rgba(255,255,255,0.05)',
+          background: THEME.bgSecondary,
           borderRadius: '20px',
           padding: '20px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: THEME.shadow,
         }}>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>
+          <h3 style={{ color: THEME.textPrimary, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
             🎯 플랫폼별 현황
           </h3>
           {data.platforms.map((platform, index) => (
             <div key={index} style={{
               display: 'flex',
               alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: index < data.platforms.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              padding: '14px 0',
+              borderBottom: index < data.platforms.length - 1 ? `1px solid ${THEME.bgTertiary}` : 'none',
             }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '12px',
-                background: `${platform.color}20`,
+                background: `${platform.color}15`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: '12px',
+                marginRight: '14px',
               }}>
-                {platform.name === 'YouTube' && <Youtube size={20} color={platform.color} />}
-                {platform.name === 'TikTok' && <Music2 size={20} color={platform.color} />}
-                {platform.name === 'Instagram' && <Instagram size={20} color={platform.color} />}
+                {platform.name === 'YouTube' && <Youtube size={22} color={platform.color} />}
+                {platform.name === 'TikTok' && <Music2 size={22} color={platform.color} />}
+                {platform.name === 'Instagram' && <Instagram size={22} color={platform.color} />}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ color: 'white', fontWeight: '500', fontSize: '14px' }}>{platform.name}</div>
-                <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{platform.uploads}개 업로드</div>
+                <div style={{ color: THEME.textPrimary, fontWeight: '500', fontSize: '15px' }}>{platform.name}</div>
+                <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{platform.uploads}개 업로드</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ color: 'white', fontWeight: '600', fontSize: '14px' }}>
+                <div style={{ color: THEME.textPrimary, fontWeight: '600', fontSize: '15px' }}>
                   ₩{platform.revenue.toLocaleString()}
                 </div>
               </div>
@@ -633,15 +780,15 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
           gap: '12px',
         }}>
           <ActionButton 
-            icon={<Zap size={20} />}
+            icon={<Zap size={22} />}
             label="생산성 분석"
-            color="#FF6B9D"
+            color={THEME.accent1}
             onClick={() => onNavigate('productivity')}
           />
           <ActionButton 
-            icon={<MessageCircle size={20} />}
+            icon={<MessageCircle size={22} />}
             label="AI 어시스턴트"
-            color="#9B6BFF"
+            color={THEME.accent2}
             onClick={() => onNavigate('ai')}
           />
         </div>
@@ -658,27 +805,27 @@ function DashboardPage({ data, user, onNavigate, onLogout }) {
 function SummaryCard({ icon, label, value, unit, color }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.05)',
+      background: THEME.bgSecondary,
       borderRadius: '16px',
-      padding: '16px',
-      border: '1px solid rgba(255,255,255,0.08)',
+      padding: '18px',
+      boxShadow: THEME.shadow,
     }}>
       <div style={{
-        width: '36px',
-        height: '36px',
-        borderRadius: '10px',
-        background: `${color}20`,
+        width: '40px',
+        height: '40px',
+        borderRadius: '12px',
+        background: `${color}15`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: '12px',
+        marginBottom: '14px',
         color: color,
       }}>
         {icon}
       </div>
-      <div style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '4px' }}>{label}</div>
-      <div style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
-        {value}{unit && <span style={{ fontSize: '14px', fontWeight: '400' }}>{unit}</span>}
+      <div style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '4px' }}>{label}</div>
+      <div style={{ color: THEME.textPrimary, fontSize: '22px', fontWeight: '700' }}>
+        {value}{unit && <span style={{ fontSize: '14px', fontWeight: '500', color: THEME.textSecondary }}> {unit}</span>}
       </div>
     </div>
   );
@@ -692,19 +839,40 @@ function ActionButton({ icon, label, color, onClick }) {
     <button
       onClick={onClick}
       style={{
-        background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-        border: `1px solid ${color}30`,
+        background: THEME.bgSecondary,
+        border: `1px solid ${THEME.bgTertiary}`,
         borderRadius: '16px',
-        padding: '20px',
+        padding: '24px 20px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '8px',
+        gap: '10px',
+        boxShadow: THEME.shadow,
+        transition: 'all 0.2s ease',
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.boxShadow = THEME.shadowHover;
+        e.currentTarget.style.transform = 'translateY(-2px)';
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.boxShadow = THEME.shadow;
+        e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
-      <div style={{ color: color }}>{icon}</div>
-      <div style={{ color: 'white', fontSize: '13px', fontWeight: '500' }}>{label}</div>
+      <div style={{ 
+        color: color,
+        width: '48px',
+        height: '48px',
+        borderRadius: '14px',
+        background: `${color}15`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {icon}
+      </div>
+      <div style={{ color: THEME.textPrimary, fontSize: '14px', fontWeight: '600' }}>{label}</div>
     </button>
   );
 }
@@ -724,17 +892,14 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
     setEditedChannels([...channels]);
   }, [channels]);
 
-  // 브랜드 목록 추출
   const brands = [...new Set(channels.map(ch => ch.brand))];
 
-  // 필터링된 채널
   const filteredChannels = editedChannels.filter(ch => {
     if (filterBrand !== 'all' && ch.brand !== filterBrand) return false;
     if (filterPlatform !== 'all' && ch.platform !== filterPlatform) return false;
     return true;
   });
 
-  // 통계
   const stats = {
     totalBrands: brands.length,
     totalChannels: channels.length,
@@ -743,7 +908,6 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
     instagram: channels.filter(ch => ch.platform === 'Instagram').length,
   };
 
-  // 비밀번호 토글
   const togglePassword = (channelId) => {
     setVisiblePasswords(prev => {
       const newState = { ...prev, [channelId]: !prev[channelId] };
@@ -756,7 +920,6 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
     });
   };
 
-  // 저장
   const handleSave = async () => {
     for (const channel of editedChannels) {
       const original = channels.find(ch => ch.id === channel.id);
@@ -767,33 +930,39 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
     setIsEditing(false);
   };
 
-  // 삭제
   const handleDelete = async (channelId) => {
     if (window.confirm('정말 삭제하시겠습니까?')) {
       await onDeleteChannel(channelId);
     }
   };
 
-  // 새 채널 추가
   const handleAddChannel = async (newChannel) => {
     await onSaveChannel(newChannel);
     setShowAddModal(false);
   };
 
-  // 편집 중 값 변경
   const handleFieldChange = (channelId, field, value) => {
     setEditedChannels(prev => prev.map(ch => 
       ch.id === channelId ? { ...ch, [field]: value } : ch
     ));
   };
 
-  // 동적 컬럼 결정
   const hasPhone = channels.some(ch => ch.phone);
   const hasIP = channels.some(ch => ch.ip);
   const hasMemo = channels.some(ch => ch.memo);
 
+  const inputStyle = {
+    background: THEME.bgTertiary,
+    border: `1px solid ${THEME.bgTertiary}`,
+    borderRadius: '8px',
+    padding: '8px 10px',
+    color: THEME.textPrimary,
+    fontSize: '13px',
+    width: '100%',
+  };
+
   return (
-    <div style={{ paddingBottom: '20px' }}>
+    <div style={{ paddingBottom: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{
         padding: '20px 24px',
@@ -805,37 +974,46 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
           <button
             onClick={onBack}
             style={{
-              background: 'rgba(255,255,255,0.1)',
+              background: THEME.bgSecondary,
               border: 'none',
               borderRadius: '10px',
-              padding: '8px',
-              color: 'white',
+              padding: '10px',
+              color: THEME.textSecondary,
               cursor: 'pointer',
+              boxShadow: THEME.shadow,
             }}
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>채널 관리</h1>
+          <h1 style={{ color: THEME.textPrimary, fontSize: '22px', fontWeight: '700' }}>채널 관리</h1>
         </div>
         <button
           onClick={() => isEditing ? handleSave() : setIsEditing(true)}
           disabled={isLoading}
           style={{
-            background: isEditing ? 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)' : 'rgba(255,255,255,0.1)',
+            background: isEditing 
+              ? `linear-gradient(135deg, ${THEME.accent4} 0%, #059669 100%)` 
+              : THEME.bgSecondary,
             border: 'none',
-            borderRadius: '10px',
-            padding: '8px 16px',
-            color: 'white',
+            borderRadius: '12px',
+            padding: '10px 20px',
+            color: isEditing ? 'white' : THEME.textPrimary,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            fontSize: '13px',
-            fontWeight: '500',
+            gap: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            boxShadow: THEME.shadow,
           }}
         >
-          {isLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 
-           isEditing ? <><Save size={16} /> 저장</> : <><Pencil size={16} /> 편집</>}
+          {isLoading ? (
+            <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+          ) : isEditing ? (
+            <><Save size={18} /> 저장</>
+          ) : (
+            <><Pencil size={18} /> 편집</>
+          )}
         </button>
       </div>
 
@@ -843,31 +1021,32 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
       <div style={{ padding: '0 24px', marginBottom: '20px' }}>
         <div style={{
           display: 'flex',
-          gap: '8px',
+          gap: '10px',
           overflowX: 'auto',
           paddingBottom: '8px',
         }}>
-          <StatBadge label="브랜드" value={stats.totalBrands} color="#9B6BFF" />
-          <StatBadge label="채널" value={stats.totalChannels} color="#6BC5FF" />
-          <StatBadge label="YouTube" value={stats.youtube} color="#FF0000" />
-          <StatBadge label="TikTok" value={stats.tiktok} color="#000000" />
-          <StatBadge label="Instagram" value={stats.instagram} color="#E1306C" />
+          <StatBadge label="브랜드" value={stats.totalBrands} color={THEME.accent2} />
+          <StatBadge label="채널" value={stats.totalChannels} color={THEME.accent3} />
+          <StatBadge label="YouTube" value={stats.youtube} color={THEME.youtube} />
+          <StatBadge label="TikTok" value={stats.tiktok} color={THEME.tiktok} />
+          <StatBadge label="Instagram" value={stats.instagram} color={THEME.instagram} />
         </div>
       </div>
 
       {/* 필터 */}
-      <div style={{ padding: '0 24px', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+      <div style={{ padding: '0 24px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           <select
             value={filterBrand}
             onChange={(e) => setFilterBrand(e.target.value)}
             style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: 'white',
-              fontSize: '13px',
+              background: THEME.bgSecondary,
+              border: `1px solid ${THEME.bgTertiary}`,
+              borderRadius: '10px',
+              padding: '10px 14px',
+              color: THEME.textPrimary,
+              fontSize: '14px',
+              cursor: 'pointer',
             }}
           >
             <option value="all">모든 브랜드</option>
@@ -879,12 +1058,13 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
             style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: 'white',
-              fontSize: '13px',
+              background: THEME.bgSecondary,
+              border: `1px solid ${THEME.bgTertiary}`,
+              borderRadius: '10px',
+              padding: '10px 14px',
+              color: THEME.textPrimary,
+              fontSize: '14px',
+              cursor: 'pointer',
             }}
           >
             <option value="all">모든 플랫폼</option>
@@ -896,20 +1076,21 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
             <button
               onClick={() => setShowAddModal(true)}
               style={{
-                background: 'linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%)',
+                background: `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)`,
                 border: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
+                borderRadius: '10px',
+                padding: '10px 18px',
                 color: 'white',
-                fontSize: '13px',
-                fontWeight: '500',
+                fontSize: '14px',
+                fontWeight: '600',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
               }}
             >
-              <Plus size={16} /> 새 채널
+              <Plus size={18} /> 새 채널
             </button>
           )}
         </div>
@@ -918,42 +1099,44 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
       {/* 채널 테이블 */}
       <div style={{ padding: '0 24px', overflowX: 'auto' }}>
         <div style={{
-          background: 'rgba(255,255,255,0.05)',
+          background: THEME.bgSecondary,
           borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: THEME.shadow,
           overflow: 'hidden',
-          minWidth: '600px',
+          minWidth: '700px',
         }}>
           {/* 테이블 헤더 */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `100px 80px 120px 100px 100px 150px 150px ${hasPhone ? '110px ' : ''}${hasIP ? '100px ' : ''}${hasMemo ? '100px ' : ''}${isEditing ? '50px' : ''}`,
+            gridTemplateColumns: `100px 90px 130px 110px 110px 160px 160px ${hasPhone ? '120px ' : ''}${hasIP ? '100px ' : ''}${hasMemo ? '120px ' : ''}${isEditing ? '50px' : ''}`,
             gap: '8px',
-            padding: '12px 16px',
-            background: 'rgba(255,255,255,0.05)',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            padding: '14px 20px',
+            background: THEME.bgTertiary,
+            borderBottom: `1px solid ${THEME.bgTertiary}`,
           }}>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>브랜드</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>플랫폼</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>채널명</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>아이디</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>비밀번호</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>이메일</div>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>URL</div>
-            {hasPhone && <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>폰번호</div>}
-            {hasIP && <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>IP</div>}
-            {hasMemo && <div style={{ color: '#B0B0B8', fontSize: '12px', fontWeight: '600' }}>메모</div>}
+            {['브랜드', '플랫폼', '채널명', '아이디', '비밀번호', '이메일', 'URL'].map(header => (
+              <div key={header} style={{ color: THEME.textSecondary, fontSize: '13px', fontWeight: '600' }}>{header}</div>
+            ))}
+            {hasPhone && <div style={{ color: THEME.textSecondary, fontSize: '13px', fontWeight: '600' }}>폰번호</div>}
+            {hasIP && <div style={{ color: THEME.textSecondary, fontSize: '13px', fontWeight: '600' }}>IP</div>}
+            {hasMemo && <div style={{ color: THEME.textSecondary, fontSize: '13px', fontWeight: '600' }}>메모</div>}
             {isEditing && <div></div>}
           </div>
 
           {/* 테이블 바디 */}
           {filteredChannels.length === 0 ? (
             <div style={{
-              padding: '40px',
+              padding: '48px',
               textAlign: 'center',
-              color: '#B0B0B8',
+              color: THEME.textSecondary,
             }}>
-              {channels.length === 0 ? '등록된 채널이 없습니다. 편집 모드에서 새 채널을 추가하세요.' : '필터 조건에 맞는 채널이 없습니다.'}
+              {channels.length === 0 ? (
+                <div>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+                  <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>등록된 채널이 없습니다</div>
+                  <div style={{ fontSize: '14px', color: THEME.textMuted }}>편집 모드에서 새 채널을 추가하세요</div>
+                </div>
+              ) : '필터 조건에 맞는 채널이 없습니다.'}
             </div>
           ) : (
             filteredChannels.map((channel, index) => (
@@ -961,33 +1144,35 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                 key={channel.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: `100px 80px 120px 100px 100px 150px 150px ${hasPhone ? '110px ' : ''}${hasIP ? '100px ' : ''}${hasMemo ? '100px ' : ''}${isEditing ? '50px' : ''}`,
+                  gridTemplateColumns: `100px 90px 130px 110px 110px 160px 160px ${hasPhone ? '120px ' : ''}${hasIP ? '100px ' : ''}${hasMemo ? '120px ' : ''}${isEditing ? '50px' : ''}`,
                   gap: '8px',
-                  padding: '12px 16px',
-                  borderBottom: index < filteredChannels.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  padding: '14px 20px',
+                  borderBottom: index < filteredChannels.length - 1 ? `1px solid ${THEME.bgTertiary}` : 'none',
                   alignItems: 'center',
                 }}
               >
                 {/* 브랜드 */}
                 <div>
                   <span style={{
-                    background: channel.brandColor || '#9B6BFF',
+                    background: channel.brandColor || THEME.accent1,
                     color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    fontWeight: '500',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '600',
                   }}>
                     {channel.brand}
                   </span>
                 </div>
 
                 {/* 플랫폼 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {channel.platform === 'YouTube' && <Youtube size={14} color="#FF0000" />}
-                  {channel.platform === 'TikTok' && <Music2 size={14} color="#000000" />}
-                  {channel.platform === 'Instagram' && <Instagram size={14} color="#E1306C" />}
-                  <span style={{ color: 'white', fontSize: '12px' }}>{channel.platform?.substring(0, 2)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {channel.platform === 'YouTube' && <Youtube size={16} color={THEME.youtube} />}
+                  {channel.platform === 'TikTok' && <Music2 size={16} />}
+                  {channel.platform === 'Instagram' && <Instagram size={16} color={THEME.instagram} />}
+                  <span style={{ color: THEME.textSecondary, fontSize: '12px' }}>
+                    {channel.platform?.substring(0, 3)}
+                  </span>
                 </div>
 
                 {/* 채널명 */}
@@ -998,7 +1183,7 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                     style={inputStyle}
                   />
                 ) : (
-                  <div style={{ color: 'white', fontSize: '12px' }}>{channel.channelName}</div>
+                  <div style={{ color: THEME.textPrimary, fontSize: '13px', fontWeight: '500' }}>{channel.channelName}</div>
                 )}
 
                 {/* 아이디 */}
@@ -1009,11 +1194,11 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                     style={inputStyle}
                   />
                 ) : (
-                  <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{channel.accountId}</div>
+                  <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{channel.accountId}</div>
                 )}
 
                 {/* 비밀번호 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {isEditing ? (
                     <input
                       type="text"
@@ -1023,7 +1208,7 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                     />
                   ) : (
                     <>
-                      <span style={{ color: '#B0B0B8', fontSize: '12px' }}>
+                      <span style={{ color: THEME.textSecondary, fontSize: '13px' }}>
                         {visiblePasswords[channel.id] ? channel.password : '••••••••'}
                       </span>
                       {channel.password && (
@@ -1032,12 +1217,12 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                           style={{
                             background: 'none',
                             border: 'none',
-                            padding: '2px',
+                            padding: '4px',
                             cursor: 'pointer',
-                            color: '#6B6B75',
+                            color: THEME.textMuted,
                           }}
                         >
-                          {visiblePasswords[channel.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                          {visiblePasswords[channel.id] ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                       )}
                     </>
@@ -1052,7 +1237,9 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                     style={inputStyle}
                   />
                 ) : (
-                  <div style={{ color: '#B0B0B8', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{channel.email}</div>
+                  <div style={{ color: THEME.textSecondary, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {channel.email}
+                  </div>
                 )}
 
                 {/* URL */}
@@ -1063,10 +1250,15 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                     style={inputStyle}
                   />
                 ) : (
-                  <div style={{ color: '#6BC5FF', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {channel.channelUrl && (
-                      <a href={channel.channelUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#6BC5FF', textDecoration: 'none' }}>
-                        {channel.channelUrl.substring(0, 20)}...
+                      <a 
+                        href={channel.channelUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ color: THEME.accent1, fontSize: '13px', textDecoration: 'none' }}
+                      >
+                        {channel.channelUrl.replace('https://', '').substring(0, 18)}...
                       </a>
                     )}
                   </div>
@@ -1081,7 +1273,7 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                       style={inputStyle}
                     />
                   ) : (
-                    <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{channel.phone}</div>
+                    <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{channel.phone}</div>
                   )
                 )}
 
@@ -1094,7 +1286,7 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                       style={inputStyle}
                     />
                   ) : (
-                    <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{channel.ip}</div>
+                    <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{channel.ip}</div>
                   )
                 )}
 
@@ -1107,7 +1299,7 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                       style={inputStyle}
                     />
                   ) : (
-                    <div style={{ color: '#B0B0B8', fontSize: '12px' }}>{channel.memo}</div>
+                    <div style={{ color: THEME.textSecondary, fontSize: '13px' }}>{channel.memo}</div>
                   )
                 )}
 
@@ -1116,15 +1308,15 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
                   <button
                     onClick={() => handleDelete(channel.id)}
                     style={{
-                      background: 'rgba(255, 107, 107, 0.2)',
+                      background: '#FEF2F2',
                       border: 'none',
-                      borderRadius: '6px',
-                      padding: '6px',
+                      borderRadius: '8px',
+                      padding: '8px',
                       cursor: 'pointer',
-                      color: '#FF6B6B',
+                      color: '#DC2626',
                     }}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 )}
               </div>
@@ -1143,27 +1335,9 @@ function ChannelsPage({ channels, onSaveChannel, onDeleteChannel, onBack, isLoad
       )}
 
       <Footer pageKey="channels" />
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
-
-// 인풋 스타일
-const inputStyle = {
-  background: 'rgba(255,255,255,0.1)',
-  border: '1px solid rgba(255,255,255,0.2)',
-  borderRadius: '6px',
-  padding: '6px 8px',
-  color: 'white',
-  fontSize: '12px',
-  width: '100%',
-};
 
 // ============================================
 // 통계 배지 컴포넌트
@@ -1171,17 +1345,18 @@ const inputStyle = {
 function StatBadge({ label, value, color }) {
   return (
     <div style={{
-      background: `${color}20`,
-      border: `1px solid ${color}40`,
+      background: THEME.bgSecondary,
+      border: `1px solid ${THEME.bgTertiary}`,
       borderRadius: '12px',
-      padding: '8px 16px',
+      padding: '10px 18px',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
+      gap: '10px',
       whiteSpace: 'nowrap',
+      boxShadow: THEME.shadow,
     }}>
-      <span style={{ color: '#B0B0B8', fontSize: '12px' }}>{label}</span>
-      <span style={{ color: color, fontSize: '16px', fontWeight: '700' }}>{value}</span>
+      <span style={{ color: THEME.textSecondary, fontSize: '13px' }}>{label}</span>
+      <span style={{ color: color, fontSize: '18px', fontWeight: '700' }}>{value}</span>
     </div>
   );
 }
@@ -1192,7 +1367,7 @@ function StatBadge({ label, value, color }) {
 function AddChannelModal({ brands, onAdd, onClose }) {
   const [formData, setFormData] = useState({
     brand: '',
-    brandColor: '#FF6B9D',
+    brandColor: THEME.accent1,
     platform: 'YouTube',
     channelName: '',
     accountId: '',
@@ -1203,9 +1378,9 @@ function AddChannelModal({ brands, onAdd, onClose }) {
     ip: '',
     memo: '',
   });
-  const [isNewBrand, setIsNewBrand] = useState(false);
+  const [isNewBrand, setIsNewBrand] = useState(brands.length === 0);
 
-  const colorOptions = ['#FF6B9D', '#9B6BFF', '#6BC5FF', '#4CAF50', '#FF9800', '#E91E63'];
+  const colorOptions = [THEME.accent1, THEME.accent2, THEME.accent3, THEME.accent4, THEME.accent5, '#EC4899'];
 
   const handleSubmit = () => {
     if (!formData.brand || !formData.channelName) {
@@ -1215,6 +1390,16 @@ function AddChannelModal({ brands, onAdd, onClose }) {
     onAdd(formData);
   };
 
+  const inputStyle = {
+    background: THEME.bgTertiary,
+    border: `1px solid ${THEME.bgTertiary}`,
+    borderRadius: '10px',
+    padding: '12px 14px',
+    color: THEME.textPrimary,
+    fontSize: '14px',
+    width: '100%',
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -1222,7 +1407,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0,0,0,0.8)',
+      background: 'rgba(0,0,0,0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1230,52 +1415,49 @@ function AddChannelModal({ brands, onAdd, onClose }) {
       zIndex: 1000,
     }}>
       <div style={{
-        background: '#1A1A2E',
-        borderRadius: '20px',
-        padding: '24px',
+        background: THEME.bgSecondary,
+        borderRadius: '24px',
+        padding: '28px',
         maxWidth: '500px',
         width: '100%',
-        maxHeight: '80vh',
+        maxHeight: '85vh',
         overflowY: 'auto',
-        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '24px',
+          marginBottom: '28px',
         }}>
-          <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>새 채널 추가</h2>
+          <h2 style={{ color: THEME.textPrimary, fontSize: '20px', fontWeight: '700' }}>새 채널 추가</h2>
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(255,255,255,0.1)',
+              background: THEME.bgTertiary,
               border: 'none',
-              borderRadius: '8px',
-              padding: '8px',
+              borderRadius: '10px',
+              padding: '10px',
               cursor: 'pointer',
-              color: '#B0B0B8',
+              color: THEME.textSecondary,
             }}
           >
             <X size={20} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {/* 브랜드 선택 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               브랜드 *
             </label>
             {!isNewBrand && brands.length > 0 ? (
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
                 <select
                   value={formData.brand}
                   onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                  style={{
-                    ...inputStyle,
-                    flex: 1,
-                  }}
+                  style={{ ...inputStyle, flex: 1 }}
                 >
                   <option value="">브랜드 선택</option>
                   {brands.map(brand => (
@@ -1285,13 +1467,15 @@ function AddChannelModal({ brands, onAdd, onClose }) {
                 <button
                   onClick={() => setIsNewBrand(true)}
                   style={{
-                    background: 'rgba(155, 107, 255, 0.2)',
-                    border: '1px solid rgba(155, 107, 255, 0.4)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    color: '#9B6BFF',
-                    fontSize: '12px',
+                    background: `${THEME.accent2}15`,
+                    border: `1px solid ${THEME.accent2}40`,
+                    borderRadius: '10px',
+                    padding: '12px 16px',
+                    color: THEME.accent2,
+                    fontSize: '13px',
+                    fontWeight: '600',
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   + 새 브랜드
@@ -1306,18 +1490,19 @@ function AddChannelModal({ brands, onAdd, onClose }) {
                   placeholder="새 브랜드 이름"
                   style={inputStyle}
                 />
-                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {colorOptions.map(color => (
                     <button
                       key={color}
                       onClick={() => setFormData({ ...formData, brandColor: color })}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '8px',
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '10px',
                         background: color,
-                        border: formData.brandColor === color ? '3px solid white' : '2px solid transparent',
+                        border: formData.brandColor === color ? '3px solid ' + THEME.textPrimary : '2px solid transparent',
                         cursor: 'pointer',
+                        transition: 'transform 0.1s',
                       }}
                     />
                   ))}
@@ -1326,12 +1511,13 @@ function AddChannelModal({ brands, onAdd, onClose }) {
                   <button
                     onClick={() => setIsNewBrand(false)}
                     style={{
-                      marginTop: '8px',
+                      marginTop: '12px',
                       background: 'none',
                       border: 'none',
-                      color: '#6BC5FF',
-                      fontSize: '12px',
+                      color: THEME.accent1,
+                      fontSize: '13px',
                       cursor: 'pointer',
+                      fontWeight: '500',
                     }}
                   >
                     ← 기존 브랜드 선택
@@ -1343,7 +1529,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 플랫폼 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               플랫폼 *
             </label>
             <select
@@ -1359,7 +1545,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 채널명 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               채널명 *
             </label>
             <input
@@ -1373,7 +1559,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 아이디 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               아이디
             </label>
             <input
@@ -1387,7 +1573,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 비밀번호 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               비밀번호
             </label>
             <input
@@ -1401,7 +1587,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 이메일 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               이메일
             </label>
             <input
@@ -1415,7 +1601,7 @@ function AddChannelModal({ brands, onAdd, onClose }) {
 
           {/* 채널 URL */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               채널 URL
             </label>
             <input
@@ -1427,23 +1613,9 @@ function AddChannelModal({ brands, onAdd, onClose }) {
             />
           </div>
 
-          {/* 폰번호 */}
-          <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
-              폰번호
-            </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="010-0000-0000"
-              style={inputStyle}
-            />
-          </div>
-
           {/* 메모 */}
           <div>
-            <label style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '6px', display: 'block' }}>
+            <label style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '8px', display: 'block', fontWeight: '500' }}>
               메모
             </label>
             <input
@@ -1460,19 +1632,19 @@ function AddChannelModal({ brands, onAdd, onClose }) {
         <div style={{
           display: 'flex',
           gap: '12px',
-          marginTop: '24px',
+          marginTop: '28px',
         }}>
           <button
             onClick={onClose}
             style={{
               flex: 1,
-              background: 'rgba(255,255,255,0.1)',
+              background: THEME.bgTertiary,
               border: 'none',
               borderRadius: '12px',
-              padding: '14px',
-              color: '#B0B0B8',
-              fontSize: '14px',
-              fontWeight: '500',
+              padding: '16px',
+              color: THEME.textSecondary,
+              fontSize: '15px',
+              fontWeight: '600',
               cursor: 'pointer',
             }}
           >
@@ -1482,14 +1654,15 @@ function AddChannelModal({ brands, onAdd, onClose }) {
             onClick={handleSubmit}
             style={{
               flex: 1,
-              background: 'linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%)',
+              background: `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)`,
               border: 'none',
               borderRadius: '12px',
-              padding: '14px',
+              padding: '16px',
               color: 'white',
-              fontSize: '14px',
+              fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
             }}
           >
             추가
@@ -1511,7 +1684,7 @@ function ProductivityPage({ data, onBack }) {
   const pesGrowth = prevMonth ? ((latestMonth.pes - prevMonth.pes) / prevMonth.pes * 100).toFixed(1) : 0;
 
   return (
-    <div style={{ paddingBottom: '20px' }}>
+    <div style={{ paddingBottom: '20px', maxWidth: '800px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{
         padding: '20px 24px',
@@ -1522,38 +1695,45 @@ function ProductivityPage({ data, onBack }) {
         <button
           onClick={onBack}
           style={{
-            background: 'rgba(255,255,255,0.1)',
+            background: THEME.bgSecondary,
             border: 'none',
             borderRadius: '10px',
-            padding: '8px',
-            color: 'white',
+            padding: '10px',
+            color: THEME.textSecondary,
             cursor: 'pointer',
+            boxShadow: THEME.shadow,
           }}
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>생산성 분석</h1>
+        <h1 style={{ color: THEME.textPrimary, fontSize: '22px', fontWeight: '700' }}>생산성 분석</h1>
       </div>
 
       {/* PES 점수 */}
       <div style={{ padding: '0 24px', marginBottom: '24px' }}>
         <div style={{
-          background: 'linear-gradient(135deg, rgba(255, 107, 157, 0.2) 0%, rgba(155, 107, 255, 0.2) 100%)',
+          background: `linear-gradient(135deg, ${THEME.accent1}15 0%, ${THEME.accent2}15 100%)`,
           borderRadius: '20px',
-          padding: '24px',
-          border: '1px solid rgba(255, 107, 157, 0.3)',
+          padding: '28px',
+          border: `1px solid ${THEME.accent1}30`,
           textAlign: 'center',
         }}>
-          <div style={{ color: '#B0B0B8', fontSize: '14px', marginBottom: '8px' }}>
+          <div style={{ color: THEME.textSecondary, fontSize: '15px', marginBottom: '12px' }}>
             이번 달 PES (생산성 효율 점수)
           </div>
-          <div style={{ color: 'white', fontSize: '48px', fontWeight: '700' }}>
+          <div style={{ 
+            color: THEME.accent1, 
+            fontSize: '56px', 
+            fontWeight: '700',
+            lineHeight: 1,
+          }}>
             {latestMonth.pes}
           </div>
           <div style={{
-            color: pesGrowth >= 0 ? '#4CAF50' : '#FF6B6B',
-            fontSize: '14px',
-            marginTop: '8px',
+            color: pesGrowth >= 0 ? THEME.accent4 : '#DC2626',
+            fontSize: '15px',
+            marginTop: '12px',
+            fontWeight: '600',
           }}>
             {pesGrowth >= 0 ? '↑' : '↓'} 전월 대비 {Math.abs(pesGrowth)}%
           </div>
@@ -1568,24 +1748,24 @@ function ProductivityPage({ data, onBack }) {
           gap: '12px',
         }}>
           <div style={{
-            background: 'rgba(255,255,255,0.05)',
+            background: THEME.bgSecondary,
             borderRadius: '16px',
-            padding: '16px',
-            border: '1px solid rgba(255,255,255,0.08)',
+            padding: '20px',
+            boxShadow: THEME.shadow,
           }}>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '8px' }}>원본 → 업로드 비율</div>
-            <div style={{ color: 'white', fontSize: '24px', fontWeight: '700' }}>
+            <div style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '10px' }}>원본 → 업로드 비율</div>
+            <div style={{ color: THEME.textPrimary, fontSize: '28px', fontWeight: '700' }}>
               1 : {(latestMonth.uploads / latestMonth.contents).toFixed(1)}
             </div>
           </div>
           <div style={{
-            background: 'rgba(255,255,255,0.05)',
+            background: THEME.bgSecondary,
             borderRadius: '16px',
-            padding: '16px',
-            border: '1px solid rgba(255,255,255,0.08)',
+            padding: '20px',
+            boxShadow: THEME.shadow,
           }}>
-            <div style={{ color: '#B0B0B8', fontSize: '12px', marginBottom: '8px' }}>콘텐츠당 평균 수익</div>
-            <div style={{ color: 'white', fontSize: '24px', fontWeight: '700' }}>
+            <div style={{ color: THEME.textSecondary, fontSize: '13px', marginBottom: '10px' }}>콘텐츠당 평균 수익</div>
+            <div style={{ color: THEME.textPrimary, fontSize: '28px', fontWeight: '700' }}>
               ₩{Math.round(latestMonth.revenue / latestMonth.contents).toLocaleString()}
             </div>
           </div>
@@ -1595,31 +1775,25 @@ function ProductivityPage({ data, onBack }) {
       {/* PES 추이 차트 */}
       <div style={{ padding: '0 24px', marginBottom: '24px' }}>
         <div style={{
-          background: 'rgba(255,255,255,0.05)',
+          background: THEME.bgSecondary,
           borderRadius: '20px',
           padding: '20px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: THEME.shadow,
         }}>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>
+          <h3 style={{ color: THEME.textPrimary, fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
             📊 PES 추이
           </h3>
           <div style={{ height: '200px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.monthlyData}>
-                <XAxis dataKey="month" tick={{ fill: '#B0B0B8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#B0B0B8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="month" tick={{ fill: THEME.textSecondary, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: THEME.textSecondary, fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip 
                   formatter={(value) => [value, 'PES']}
-                  contentStyle={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  labelStyle={{ color: 'white' }}
+                  contentStyle={{ background: THEME.bgSecondary, border: `1px solid ${THEME.bgTertiary}`, borderRadius: '8px' }}
+                  labelStyle={{ color: THEME.textPrimary }}
                 />
-                <Bar dataKey="pes" fill="url(#pesGradient)" radius={[8, 8, 0, 0]} />
-                <defs>
-                  <linearGradient id="pesGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6BC5FF" />
-                    <stop offset="100%" stopColor="#9B6BFF" />
-                  </linearGradient>
-                </defs>
+                <Bar dataKey="pes" fill={THEME.accent3} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1636,7 +1810,7 @@ function ProductivityPage({ data, onBack }) {
 // ============================================
 function AIPage({ onBack }) {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: '안녕하세요! 크리에이터 대시보드 AI 어시스턴트예요. 채널 관리, 콘텐츠 전략, 수익 분석에 대해 물어보세요!' }
+    { role: 'assistant', content: '안녕하세요! 크리에이터 대시보드 AI 어시스턴트예요. 채널 관리, 콘텐츠 전략, 수익 분석에 대해 물어보세요! 🚀' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -1649,13 +1823,12 @@ function AIPage({ onBack }) {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
-    // 간단한 응답 (실제로는 AI API 연동 가능)
     setTimeout(() => {
       const responses = [
-        '좋은 질문이에요! 멀티 플랫폼 운영 시 각 플랫폼의 알고리즘 특성을 이해하는 것이 중요해요.',
-        '수익 극대화를 위해서는 콘텐츠 재활용 전략을 추천드려요. 하나의 원본으로 여러 포맷을 만들어보세요!',
-        '채널 성장을 위해서는 일관된 업로드 스케줄과 시청자 참여가 핵심이에요.',
-        '데이터를 보면 이번 달 생산성이 좋아지고 있어요. 현재 전략을 유지하시면 좋을 것 같아요!',
+        '좋은 질문이에요! 멀티 플랫폼 운영 시 각 플랫폼의 알고리즘 특성을 이해하는 것이 중요해요. 💡',
+        '수익 극대화를 위해서는 콘텐츠 재활용 전략을 추천드려요. 하나의 원본으로 여러 포맷을 만들어보세요! 📈',
+        '채널 성장을 위해서는 일관된 업로드 스케줄과 시청자 참여가 핵심이에요. ✨',
+        '데이터를 보면 이번 달 생산성이 좋아지고 있어요. 현재 전략을 유지하시면 좋을 것 같아요! 👏',
       ];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
       setMessages(prev => [...prev, { role: 'assistant', content: randomResponse }]);
@@ -1668,6 +1841,9 @@ function AIPage({ onBack }) {
       height: '100vh', 
       display: 'flex', 
       flexDirection: 'column',
+      maxWidth: '800px',
+      margin: '0 auto',
+      background: THEME.bgPrimary,
     }}>
       {/* 헤더 */}
       <div style={{
@@ -1675,24 +1851,25 @@ function AIPage({ onBack }) {
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        background: THEME.bgSecondary,
+        borderBottom: `1px solid ${THEME.bgTertiary}`,
       }}>
         <button
           onClick={onBack}
           style={{
-            background: 'rgba(255,255,255,0.1)',
+            background: THEME.bgTertiary,
             border: 'none',
             borderRadius: '10px',
-            padding: '8px',
-            color: 'white',
+            padding: '10px',
+            color: THEME.textSecondary,
             cursor: 'pointer',
           }}
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>AI 어시스턴트</h1>
-          <p style={{ color: '#B0B0B8', fontSize: '12px' }}>크리에이터 전략 상담</p>
+          <h1 style={{ color: THEME.textPrimary, fontSize: '18px', fontWeight: '700' }}>AI 어시스턴트</h1>
+          <p style={{ color: THEME.textSecondary, fontSize: '13px' }}>크리에이터 전략 상담</p>
         </div>
       </div>
 
@@ -1713,14 +1890,15 @@ function AIPage({ onBack }) {
           >
             <div style={{
               maxWidth: '80%',
-              padding: '12px 16px',
-              borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+              padding: '14px 18px',
+              borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
               background: msg.role === 'user' 
-                ? 'linear-gradient(135deg, #FF6B9D 0%, #9B6BFF 100%)' 
-                : 'rgba(255,255,255,0.1)',
-              color: 'white',
-              fontSize: '14px',
-              lineHeight: '1.5',
+                ? `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)` 
+                : THEME.bgSecondary,
+              color: msg.role === 'user' ? 'white' : THEME.textPrimary,
+              fontSize: '15px',
+              lineHeight: '1.6',
+              boxShadow: THEME.shadow,
             }}>
               {msg.content}
             </div>
@@ -1729,12 +1907,13 @@ function AIPage({ onBack }) {
         {isLoading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '16px' }}>
             <div style={{
-              padding: '12px 16px',
-              borderRadius: '16px 16px 16px 4px',
-              background: 'rgba(255,255,255,0.1)',
-              color: '#B0B0B8',
+              padding: '14px 18px',
+              borderRadius: '18px 18px 18px 4px',
+              background: THEME.bgSecondary,
+              color: THEME.textMuted,
+              boxShadow: THEME.shadow,
             }}>
-              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+              <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
             </div>
           </div>
         )}
@@ -1742,8 +1921,9 @@ function AIPage({ onBack }) {
 
       {/* 입력 영역 */}
       <div style={{
-        padding: '16px 24px',
-        borderTop: '1px solid rgba(255,255,255,0.1)',
+        padding: '16px 24px 24px',
+        background: THEME.bgSecondary,
+        borderTop: `1px solid ${THEME.bgTertiary}`,
       }}>
         <div style={{
           display: 'flex',
@@ -1758,39 +1938,32 @@ function AIPage({ onBack }) {
             placeholder="질문을 입력하세요..."
             style={{
               flex: 1,
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              color: 'white',
-              fontSize: '14px',
-              outline: 'none',
+              background: THEME.bgTertiary,
+              border: 'none',
+              borderRadius: '14px',
+              padding: '16px 20px',
+              color: THEME.textPrimary,
+              fontSize: '15px',
             }}
           />
           <button
             onClick={sendMessage}
             disabled={isLoading || !input.trim()}
             style={{
-              background: 'linear-gradient(135deg, #FF6B9D 0%, #9B6BFF 100%)',
+              background: `linear-gradient(135deg, ${THEME.accent1} 0%, ${THEME.accent2} 100%)`,
               border: 'none',
-              borderRadius: '12px',
-              padding: '14px',
+              borderRadius: '14px',
+              padding: '16px',
               color: 'white',
               cursor: 'pointer',
               opacity: (isLoading || !input.trim()) ? 0.5 : 1,
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
             }}
           >
             <Send size={20} />
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
