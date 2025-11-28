@@ -421,13 +421,15 @@ function LoginPage({ isLoading, error, googleLoaded, onGoogleLogin }) {
   useEffect(() => {
     if (googleLoaded && window.google && !isLoading && !buttonRendered) {
       try {
+        // Google Identity Services 초기화
         window.google.accounts.id.initialize({
           client_id: CONFIG.GOOGLE_CLIENT_ID,
           callback: onGoogleLogin,
         });
         
+        // 버튼 컨테이너가 실제로 존재하는지 확인
         const buttonContainer = document.getElementById('google-login-button');
-        if (buttonContainer) {
+        if (buttonContainer && !buttonContainer.hasChildNodes()) {
           buttonContainer.innerHTML = '';
           window.google.accounts.id.renderButton(
             buttonContainer,
@@ -444,9 +446,17 @@ function LoginPage({ isLoading, error, googleLoaded, onGoogleLogin }) {
         }
       } catch (err) {
         console.error('Google button render error:', err);
+        setError('Google 로그인 버튼을 생성할 수 없습니다. 페이지를 새로고침 해주세요.');
       }
     }
   }, [googleLoaded, isLoading, buttonRendered, onGoogleLogin]);
+
+  // Google 로딩 상태 확인
+  useEffect(() => {
+    if (googleLoaded && !window.google) {
+      setError('Google 로그인 서비스를 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    }
+  }, [googleLoaded]);
 
   return (
     <div style={{
