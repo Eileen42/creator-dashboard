@@ -7,7 +7,7 @@ import { Youtube, Instagram, Music2, TrendingUp, DollarSign, Video, Plus, ArrowL
 // ============================================
 const CONFIG = {
   GOOGLE_CLIENT_ID: '590021584308-rfnvvdjmntukh5roq0dlp6hibf470njs.apps.googleusercontent.com',
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwHI6f0hVspBA8vftjOvNhnrYBXJA1fJIF9R3SdvACN7v82xEV-YwyUGhEgfktMbxOSeg/exec'
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzkwKaclIiKPfe_Ou5pqcrI2MSylTjue-FCBvOHyu_2bTqd8c5wMmEpGQvYjqT5hYRIrw/exec'
 };
 
 // ============================================
