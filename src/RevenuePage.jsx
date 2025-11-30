@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Calendar, Plus, Trash2 } from 'lucide-react';
-import { THEME } from '../../config';
-import { callBackend, formatCurrency } from '../../api';
+import { THEME } from './config';
+import { callBackend, formatCurrency } from './api';
 
 export default function RevenuePage({ spreadsheetId, onReload, onBack, platformsAndChannels }) {
   const [tab, setTab] = useState('revenue');
