@@ -35,3 +35,18 @@ export function formatNumber(num) {
 export function formatCurrency(num) {
   return '₩' + (num?.toLocaleString() || '0');
 }
+
+// ============================================
+// 날짜 포맷 함수
+// ============================================
+export function formatDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function formatDateKR(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
