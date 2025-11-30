@@ -1,339 +1,662 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { ChevronLeft, Calendar, Plus, Trash2 } from 'lucide-react';
 import { THEME } from '../../config';
-import { callBackend, formatCurrency, formatDate } from '../../api';
-import { PageHeader, Footer } from '../common';
+import { callBackend, formatCurrency } from '../../api';
 
-export default function RevenuePage({ revenues, expenses, spreadsheetId, onReload, onBack, platformsAndChannels }) {
-  const [tab, setTab] = useState('dashboard');
+export default function RevenuePage({ spreadsheetId, onReload, onBack, platformsAndChannels }) {
+  const [tab, setTab] = useState('revenue');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [dashboardData, setDashboardData] = useState(null);
-  
+  const [revenueData, setRevenueData] = useState({});
+  const [expenseData, setExpenseData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
   const platforms = platformsAndChannels?.platforms || [];
   const channels = platformsAndChannels?.channels || [];
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+  // 플랫폼별 채널 그룹화
+  const channelsByPlatform = {};
+  platforms.forEach(p => {
+    channelsByPlatform[p.name] = channels.filter(c => c.platform === p.name);
+  });
+
+  // 데이터 로드
   useEffect(() => {
-    loadDashboardData();
+    loadData();
   }, [selectedYear, spreadsheetId]);
 
-  const loadDashboardData = async () => {
-    const result = await callBackend('getRevenueDashboard', { spreadsheetId, year: selectedYear });
-    if (result.success) setDashboardData(result);
+  const loadData = async () => {
+    setIsLoading(true);
+    
+    // 수익 데이터 로드
+    const revRes = await callBackend('getRevenues', { spreadsheetId, year: selectedYear });
+    if (revRes.success) {
+      // { platform: { channel: { month: amount } } } 형태로 변환
+      const grouped = {};
+      (revRes.revenues || []).forEach(r => {
+        if (!grouped[r.platform]) grouped[r.platform] = {};
+        if (!grouped[r.platform][r.channelName]) grouped[r.platform][r.channelName] = {};
+        grouped[r.platform][r.channelName][r.month] = { id: r.id, amount: r.amount };
+      });
+      setRevenueData(grouped);
+    }
+
+    // 지출 데이터 로드
+    const expRes = await callBackend('getExpenses', { spreadsheetId, year: selectedYear });
+    if (expRes.success) {
+      setExpenseData(expRes.expenses || []);
+    }
+
+    setIsLoading(false);
   };
 
-  const tabStyle = (active, color) => ({
-    padding: '12px 20px', border: 'none', borderRadius: '12px',
+  // 탭 스타일
+  const tabStyle = (active) => ({
+    padding: '14px 28px',
+    border: 'none',
     background: active ? THEME.bgSecondary : 'transparent',
-    color: active ? color : THEME.textSecondary,
-    fontWeight: '600', cursor: 'pointer', fontSize: '14px',
-    boxShadow: active ? THEME.shadow : 'none', transition: 'all 0.2s'
+    color: active ? THEME.accent1 : THEME.textMuted,
+    fontWeight: '600',
+    fontSize: '15px',
+    cursor: 'pointer',
+    borderRadius: '12px 12px 0 0',
+    transition: 'all 0.2s'
   });
 
   return (
-    <div style={{ paddingBottom: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      <PageHeader title="수익/지출 관리" onBack={onBack} />
-
-      <div style={{ padding: '0 24px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', background: THEME.bgTertiary, borderRadius: '14px', padding: '4px', gap: '4px' }}>
-            <button onClick={() => setTab('dashboard')} style={tabStyle(tab === 'dashboard', THEME.accent1)}>📊 대시보드</button>
-            <button onClick={() => setTab('revenue')} style={tabStyle(tab === 'revenue', THEME.accent4)}>💰 수익 입력</button>
-            <button onClick={() => setTab('expense')} style={tabStyle(tab === 'expense', THEME.danger)}>💸 지출 입력</button>
-          </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={16} color={THEME.textMuted} />
-            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} style={{ background: THEME.bgSecondary, border: `1px solid ${THEME.bgTertiary}`, borderRadius: '10px', padding: '10px 14px', fontSize: '14px', fontWeight: '600' }}>
-              {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}년</option>)}
-            </select>
-          </div>
+    <div style={{ minHeight: '100vh', background: THEME.bgPrimary }}>
+      {/* 헤더 */}
+      <div style={{ 
+        background: THEME.bgSecondary, 
+        padding: '16px 24px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '16px',
+        borderBottom: `1px solid ${THEME.bgTertiary}`
+      }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+          <ChevronLeft size={24} color={THEME.textPrimary} />
+        </button>
+        <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: THEME.textPrimary }}>
+          수익/지출 관리
+        </h1>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={18} color={THEME.textMuted} />
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            style={{
+              background: THEME.bgTertiary,
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              fontSize: '15px',
+              fontWeight: '600',
+              color: THEME.textPrimary,
+              cursor: 'pointer'
+            }}
+          >
+            {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}년</option>)}
+          </select>
         </div>
       </div>
 
-      {tab === 'dashboard' && <DashboardTab data={dashboardData} year={selectedYear} />}
-      {tab === 'revenue' && <RevenueInputTab revenues={revenues.filter(r => r.year == selectedYear)} spreadsheetId={spreadsheetId} onReload={() => { onReload(); loadDashboardData(); }} platforms={platforms} channels={channels} year={selectedYear} />}
-      {tab === 'expense' && <ExpenseInputTab expenses={expenses.filter(e => e.year == selectedYear)} spreadsheetId={spreadsheetId} onReload={() => { onReload(); loadDashboardData(); }} year={selectedYear} />}
-
-      <Footer />
-    </div>
-  );
-}
-
-function DashboardTab({ data, year }) {
-  if (!data) return <div style={{ padding: '48px 24px', textAlign: 'center', color: THEME.textMuted }}>로딩 중...</div>;
-
-  const months = [1,2,3,4,5,6,7,8,9,10,11,12];
-  const cellStyle = { padding: '10px 8px', textAlign: 'right', fontSize: '13px', borderBottom: `1px solid ${THEME.bgTertiary}`, whiteSpace: 'nowrap' };
-  const headerCellStyle = { ...cellStyle, background: THEME.bgTertiary, fontWeight: '600', color: THEME.textSecondary, textAlign: 'center', position: 'sticky', top: 0, zIndex: 1 };
-  const labelCellStyle = { ...cellStyle, textAlign: 'left', fontWeight: '600', color: THEME.textPrimary, background: THEME.bgPrimary, position: 'sticky', left: 0, zIndex: 1 };
-
-  return (
-    <div style={{ padding: '0 24px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <SummaryCard icon={<TrendingUp size={24} />} label="총 매출합계" value={formatCurrency(data.yearlyRevenue)} color={THEME.accent1} />
-        <SummaryCard icon={<TrendingDown size={24} />} label="총 지출합계" value={formatCurrency(data.yearlyExpense)} color={THEME.danger} />
-        <SummaryCard icon={<DollarSign size={24} />} label="연간 순수익" value={formatCurrency(data.yearlyNetRevenue)} color={data.yearlyNetRevenue >= 0 ? THEME.accent4 : THEME.danger} />
-      </div>
-
-      <div style={{ background: THEME.bgSecondary, borderRadius: '16px', boxShadow: THEME.shadow, overflow: 'hidden', marginBottom: '24px' }}>
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${THEME.bgTertiary}` }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: THEME.textPrimary }}>📈 월별 추이</h3>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
-            <thead><tr><th style={{ ...headerCellStyle, textAlign: 'left', minWidth: '120px' }}>항목</th>{months.map(m => <th key={m} style={{ ...headerCellStyle, minWidth: '80px' }}>{m}월</th>)}</tr></thead>
-            <tbody>
-              <tr><td style={{ ...labelCellStyle, background: `${THEME.accent1}10` }}>💰 총 매출합계</td>{months.map(m => <td key={m} style={{ ...cellStyle, color: THEME.accent1, fontWeight: '600' }}>{formatCurrency(data.monthlyTotals[m] || 0)}</td>)}</tr>
-              <tr><td style={{ ...labelCellStyle, background: `${THEME.accent4}10` }}>📊 월별 순수익</td>{months.map(m => { const net = data.netRevenueByMonth[m] || 0; return <td key={m} style={{ ...cellStyle, color: net >= 0 ? THEME.accent4 : THEME.danger, fontWeight: '600' }}>{formatCurrency(net)}</td>; })}</tr>
-              <tr><td style={{ ...labelCellStyle, background: `${THEME.danger}10` }}>💸 월별 인건비</td>{months.map(m => <td key={m} style={{ ...cellStyle, color: THEME.danger }}>{formatCurrency(data.expenseByMonth[m] || 0)}</td>)}</tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div style={{ background: THEME.bgSecondary, borderRadius: '16px', boxShadow: THEME.shadow, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${THEME.bgTertiary}` }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: THEME.textPrimary }}>💰 플랫폼/채널별 수익</h3>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
-            <thead><tr><th style={{ ...headerCellStyle, textAlign: 'left', minWidth: '80px' }}>플랫폼</th><th style={{ ...headerCellStyle, textAlign: 'left', minWidth: '100px' }}>채널</th>{months.map(m => <th key={m} style={{ ...headerCellStyle, minWidth: '80px' }}>{m}월</th>)}</tr></thead>
-            <tbody>
-              {data.platforms.map((platform) => {
-                const platformChannels = data.channelsByPlatform[platform] || [];
-                const platformTotal = data.platformTotals[platform] || {};
-                return (
-                  <React.Fragment key={platform}>
-                    {platformChannels.map((channel, cIdx) => {
-                      const channelData = data.revenueData[platform]?.[channel] || {};
-                      return (
-                        <tr key={`${platform}-${channel}`}>
-                          {cIdx === 0 && <td rowSpan={platformChannels.length + 1} style={{ ...labelCellStyle, verticalAlign: 'top', background: `${THEME.accent1}05` }}>{platform}</td>}
-                          <td style={{ ...cellStyle, textAlign: 'left', color: THEME.textSecondary }}>{channel}</td>
-                          {months.map(m => <td key={m} style={{ ...cellStyle, color: channelData[m] ? THEME.textPrimary : THEME.textMuted }}>{channelData[m] ? formatCurrency(channelData[m]) : '-'}</td>)}
-                        </tr>
-                      );
-                    })}
-                    {platformChannels.length > 0 && (
-                      <tr style={{ background: `${THEME.accent1}08` }}>
-                        <td style={{ ...cellStyle, textAlign: 'left', fontWeight: '600', color: THEME.accent1 }}>TOTAL</td>
-                        {months.map(m => <td key={m} style={{ ...cellStyle, fontWeight: '600', color: THEME.accent1 }}>{platformTotal[m] ? formatCurrency(platformTotal[m]) : '-'}</td>)}
-                      </tr>
-                    )}
-                    {platformChannels.length === 0 && (
-                      <tr><td style={{ ...labelCellStyle, background: `${THEME.accent1}05` }}>{platform}</td><td style={{ ...cellStyle, textAlign: 'left', color: THEME.textMuted }}>-</td>{months.map(m => <td key={m} style={{ ...cellStyle, color: THEME.textMuted }}>-</td>)}</tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RevenueInputTab({ revenues, spreadsheetId, onReload, platforms, channels, year }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [newRow, setNewRow] = useState({ month: new Date().getMonth() + 1, platform: '', channelName: '', amount: '' });
-  const [editingCell, setEditingCell] = useState(null);
-  const [editValue, setEditValue] = useState('');
-  const months = [...Array(12)].map((_, i) => i + 1);
-
-  const handleSave = async (data) => {
-    if (!data.platform || !data.amount) return;
-    setIsLoading(true);
-    await callBackend('saveRevenue', { spreadsheetId, revenueData: { ...data, year, amount: Number(data.amount) } });
-    await onReload();
-    setNewRow({ month: new Date().getMonth() + 1, platform: '', channelName: '', amount: '' });
-    setIsLoading(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('삭제하시겠습니까?')) return;
-    setIsLoading(true);
-    await callBackend('deleteRevenue', { spreadsheetId, revenueId: id });
-    await onReload();
-    setIsLoading(false);
-  };
-
-  const startEdit = (id, field, value) => { setEditingCell({ id, field }); setEditValue(value); };
-  const finishEdit = async () => {
-    if (!editingCell) return;
-    setIsLoading(true);
-    const item = revenues.find(r => r.id === editingCell.id);
-    if (item) {
-      const updated = { ...item, [editingCell.field]: editingCell.field === 'amount' ? Number(editValue) : editValue };
-      await callBackend('saveRevenue', { spreadsheetId, revenueData: updated });
-    }
-    await onReload();
-    setEditingCell(null); setEditValue('');
-    setIsLoading(false);
-  };
-
-  const cellStyle = { padding: '10px 12px', borderBottom: `1px solid ${THEME.bgTertiary}`, fontSize: '14px', color: THEME.textPrimary };
-  const headerCellStyle = { ...cellStyle, background: THEME.bgTertiary, fontWeight: '600', color: THEME.textSecondary, fontSize: '13px', position: 'sticky', top: 0, zIndex: 1 };
-  const inputStyle = { width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: THEME.textPrimary, outline: 'none', padding: 0 };
-
-  const totalByMonth = {};
-  months.forEach(m => { totalByMonth[m] = revenues.filter(r => r.month == m).reduce((sum, r) => sum + (Number(r.amount) || 0), 0); });
-
-  return (
-    <div style={{ padding: '0 24px' }}>
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '16px', paddingBottom: '8px' }}>
-        {months.map(m => (
-          <div key={m} style={{ background: THEME.bgSecondary, borderRadius: '10px', padding: '12px 16px', minWidth: '80px', textAlign: 'center', boxShadow: THEME.shadow, border: m === new Date().getMonth() + 1 ? `2px solid ${THEME.accent1}` : 'none' }}>
-            <div style={{ color: THEME.textMuted, fontSize: '12px', marginBottom: '4px' }}>{m}월</div>
-            <div style={{ color: totalByMonth[m] > 0 ? THEME.accent1 : THEME.textMuted, fontWeight: '600', fontSize: '13px' }}>{totalByMonth[m] > 0 ? formatCurrency(totalByMonth[m]) : '-'}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ background: THEME.bgSecondary, borderRadius: '16px', boxShadow: THEME.shadow, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-            <thead><tr><th style={{ ...headerCellStyle, width: '80px' }}>월</th><th style={{ ...headerCellStyle, width: '140px' }}>플랫폼</th><th style={{ ...headerCellStyle, width: '160px' }}>채널명</th><th style={{ ...headerCellStyle, width: '140px', textAlign: 'right' }}>금액</th><th style={{ ...headerCellStyle, width: '60px' }}></th></tr></thead>
-            <tbody>
-              {revenues.sort((a, b) => a.month - b.month || a.platform.localeCompare(b.platform)).map((r) => (
-                <tr key={r.id} style={{ transition: 'background 0.15s' }} onMouseOver={(e) => e.currentTarget.style.background = THEME.bgPrimary} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                  <td style={cellStyle}>{r.month}월</td>
-                  <td style={{ ...cellStyle, cursor: 'pointer' }} onClick={() => startEdit(r.id, 'platform', r.platform)}>
-                    {editingCell?.id === r.id && editingCell?.field === 'platform' ? <select value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={finishEdit} autoFocus style={{ ...inputStyle, cursor: 'pointer' }}>{platforms.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}</select> : r.platform}
-                  </td>
-                  <td style={{ ...cellStyle, cursor: 'pointer' }} onClick={() => startEdit(r.id, 'channelName', r.channelName)}>
-                    {editingCell?.id === r.id && editingCell?.field === 'channelName' ? <input type="text" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={finishEdit} onKeyPress={(e) => e.key === 'Enter' && finishEdit()} autoFocus style={inputStyle} /> : (r.channelName || '-')}
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'right', cursor: 'pointer', color: THEME.accent1, fontWeight: '600' }} onClick={() => startEdit(r.id, 'amount', r.amount)}>
-                    {editingCell?.id === r.id && editingCell?.field === 'amount' ? <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={finishEdit} onKeyPress={(e) => e.key === 'Enter' && finishEdit()} autoFocus style={{ ...inputStyle, textAlign: 'right' }} /> : formatCurrency(r.amount)}
-                  </td>
-                  <td style={cellStyle}><button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', opacity: 0.5 }} onMouseOver={(e) => e.currentTarget.style.opacity = 1} onMouseOut={(e) => e.currentTarget.style.opacity = 0.5}><Trash2 size={16} color={THEME.danger} /></button></td>
-                </tr>
-              ))}
-              <tr style={{ background: `${THEME.accent4}08` }}>
-                <td style={cellStyle}><select value={newRow.month} onChange={(e) => setNewRow({ ...newRow, month: Number(e.target.value) })} style={{ ...inputStyle, cursor: 'pointer', color: THEME.textSecondary }}>{months.map(m => <option key={m} value={m}>{m}월</option>)}</select></td>
-                <td style={cellStyle}><select value={newRow.platform} onChange={(e) => setNewRow({ ...newRow, platform: e.target.value, channelName: '' })} style={{ ...inputStyle, cursor: 'pointer', color: newRow.platform ? THEME.textPrimary : THEME.textMuted }}><option value="">플랫폼 선택</option>{platforms.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}</select></td>
-                <td style={cellStyle}><select value={newRow.channelName} onChange={(e) => setNewRow({ ...newRow, channelName: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', color: newRow.channelName ? THEME.textPrimary : THEME.textMuted }}><option value="">채널 선택</option>{channels.filter(c => c.platform === newRow.platform).map(c => <option key={c.id} value={c.channelName}>{c.channelName}</option>)}</select></td>
-                <td style={cellStyle}><input type="number" placeholder="금액 입력" value={newRow.amount} onChange={(e) => setNewRow({ ...newRow, amount: e.target.value })} onKeyPress={(e) => e.key === 'Enter' && handleSave(newRow)} style={{ ...inputStyle, textAlign: 'right', color: THEME.textMuted }} /></td>
-                <td style={cellStyle}><button onClick={() => handleSave(newRow)} disabled={isLoading || !newRow.platform || !newRow.amount} style={{ background: THEME.accent4, border: 'none', borderRadius: '6px', padding: '6px', cursor: 'pointer', opacity: (!newRow.platform || !newRow.amount) ? 0.3 : 1 }}><Plus size={16} color="white" /></button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ExpenseInputTab({ expenses, spreadsheetId, onReload, year }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [newRow, setNewRow] = useState({ date: formatDate(new Date()), name: '', category: '', quantity: 1, unitPrice: '', memo: '' });
-  const [editingCell, setEditingCell] = useState(null);
-  const [editValue, setEditValue] = useState('');
-  const [filterMonth, setFilterMonth] = useState('all');
-  const months = [...Array(12)].map((_, i) => i + 1);
-
-  const filteredExpenses = filterMonth === 'all' ? expenses : expenses.filter(e => e.month == filterMonth);
-  const totalByMonth = {};
-  months.forEach(m => { totalByMonth[m] = expenses.filter(e => e.month == m).reduce((sum, e) => sum + (Number(e.amount) || 0), 0); });
-  const filteredTotal = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-
-  const handleSave = async (data) => {
-    if (!data.category || !data.unitPrice) return;
-    setIsLoading(true);
-    await callBackend('saveExpense', { spreadsheetId, expenseData: { ...data, quantity: Number(data.quantity) || 1, unitPrice: Number(data.unitPrice) } });
-    await onReload();
-    setNewRow({ date: formatDate(new Date()), name: '', category: '', quantity: 1, unitPrice: '', memo: '' });
-    setIsLoading(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('삭제하시겠습니까?')) return;
-    setIsLoading(true);
-    await callBackend('deleteExpense', { spreadsheetId, expenseId: id });
-    await onReload();
-    setIsLoading(false);
-  };
-
-  const startEdit = (id, field, value) => { setEditingCell({ id, field }); setEditValue(field === 'date' ? formatDate(value) : value); };
-  const finishEdit = async () => {
-    if (!editingCell) return;
-    setIsLoading(true);
-    const item = expenses.find(e => e.id === editingCell.id);
-    if (item) {
-      let newValue = editValue;
-      if (['quantity', 'unitPrice'].includes(editingCell.field)) newValue = Number(editValue);
-      const updated = { ...item, [editingCell.field]: newValue };
-      await callBackend('saveExpense', { spreadsheetId, expenseData: updated });
-    }
-    await onReload();
-    setEditingCell(null); setEditValue('');
-    setIsLoading(false);
-  };
-
-  const cellStyle = { padding: '10px 12px', borderBottom: `1px solid ${THEME.bgTertiary}`, fontSize: '14px', color: THEME.textPrimary };
-  const headerCellStyle = { ...cellStyle, background: THEME.bgTertiary, fontWeight: '600', color: THEME.textSecondary, fontSize: '13px', position: 'sticky', top: 0, zIndex: 1 };
-  const inputStyle = { width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: THEME.textPrimary, outline: 'none', padding: 0 };
-
-  return (
-    <div style={{ padding: '0 24px' }}>
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '16px', paddingBottom: '8px', alignItems: 'center' }}>
-        <button onClick={() => setFilterMonth('all')} style={{ background: filterMonth === 'all' ? THEME.danger : THEME.bgSecondary, color: filterMonth === 'all' ? 'white' : THEME.textSecondary, border: 'none', borderRadius: '10px', padding: '12px 16px', minWidth: '80px', textAlign: 'center', boxShadow: THEME.shadow, cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>전체</button>
-        {months.map(m => (
-          <button key={m} onClick={() => setFilterMonth(m)} style={{ background: filterMonth === m ? THEME.danger : THEME.bgSecondary, color: filterMonth === m ? 'white' : (totalByMonth[m] > 0 ? THEME.textPrimary : THEME.textMuted), border: 'none', borderRadius: '10px', padding: '12px 16px', minWidth: '80px', textAlign: 'center', boxShadow: THEME.shadow, cursor: 'pointer' }}>
-            <div style={{ fontSize: '12px', marginBottom: '4px', opacity: 0.8 }}>{m}월</div>
-            <div style={{ fontWeight: '600', fontSize: '12px' }}>{totalByMonth[m] > 0 ? formatCurrency(totalByMonth[m]) : '-'}</div>
+      {/* 탭 */}
+      <div style={{ padding: '0 24px', background: THEME.bgPrimary }}>
+        <div style={{ display: 'flex', gap: '4px', paddingTop: '16px' }}>
+          <button onClick={() => setTab('revenue')} style={tabStyle(tab === 'revenue')}>
+            💰 수익
           </button>
-        ))}
-      </div>
-
-      <div style={{ background: `${THEME.danger}10`, borderRadius: '12px', padding: '16px 20px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: THEME.textSecondary, fontSize: '14px' }}>{filterMonth === 'all' ? `${year}년 전체` : `${year}년 ${filterMonth}월`} 지출 합계</span>
-        <span style={{ color: THEME.danger, fontSize: '24px', fontWeight: '700' }}>{formatCurrency(filteredTotal)}</span>
-      </div>
-
-      <div style={{ background: THEME.bgSecondary, borderRadius: '16px', boxShadow: THEME.shadow, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-            <thead><tr><th style={{ ...headerCellStyle, width: '120px' }}>지출일자</th><th style={{ ...headerCellStyle, width: '100px' }}>담당자</th><th style={{ ...headerCellStyle, width: '150px' }}>지출항목</th><th style={{ ...headerCellStyle, width: '70px', textAlign: 'center' }}>수량</th><th style={{ ...headerCellStyle, width: '110px', textAlign: 'right' }}>단가</th><th style={{ ...headerCellStyle, width: '120px', textAlign: 'right' }}>금액</th><th style={{ ...headerCellStyle, width: '150px' }}>비고</th><th style={{ ...headerCellStyle, width: '50px' }}></th></tr></thead>
-            <tbody>
-              {filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)).map((e) => (
-                <tr key={e.id} style={{ transition: 'background 0.15s' }} onMouseOver={(ev) => ev.currentTarget.style.background = THEME.bgPrimary} onMouseOut={(ev) => ev.currentTarget.style.background = 'transparent'}>
-                  <td style={{ ...cellStyle, cursor: 'pointer' }} onClick={() => startEdit(e.id, 'date', e.date)}>{editingCell?.id === e.id && editingCell?.field === 'date' ? <input type="date" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} autoFocus style={inputStyle} /> : formatDate(e.date)}</td>
-                  <td style={{ ...cellStyle, cursor: 'pointer' }} onClick={() => startEdit(e.id, 'name', e.name)}>{editingCell?.id === e.id && editingCell?.field === 'name' ? <input type="text" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} onKeyPress={(ev) => ev.key === 'Enter' && finishEdit()} autoFocus style={inputStyle} /> : (e.name || '-')}</td>
-                  <td style={{ ...cellStyle, cursor: 'pointer' }} onClick={() => startEdit(e.id, 'category', e.category)}>{editingCell?.id === e.id && editingCell?.field === 'category' ? <input type="text" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} onKeyPress={(ev) => ev.key === 'Enter' && finishEdit()} autoFocus style={inputStyle} /> : e.category}</td>
-                  <td style={{ ...cellStyle, textAlign: 'center', cursor: 'pointer' }} onClick={() => startEdit(e.id, 'quantity', e.quantity)}>{editingCell?.id === e.id && editingCell?.field === 'quantity' ? <input type="number" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} onKeyPress={(ev) => ev.key === 'Enter' && finishEdit()} autoFocus style={{ ...inputStyle, textAlign: 'center' }} /> : e.quantity}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right', cursor: 'pointer' }} onClick={() => startEdit(e.id, 'unitPrice', e.unitPrice)}>{editingCell?.id === e.id && editingCell?.field === 'unitPrice' ? <input type="number" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} onKeyPress={(ev) => ev.key === 'Enter' && finishEdit()} autoFocus style={{ ...inputStyle, textAlign: 'right' }} /> : formatCurrency(e.unitPrice)}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right', color: THEME.danger, fontWeight: '600' }}>{formatCurrency(e.amount)}</td>
-                  <td style={{ ...cellStyle, cursor: 'pointer', color: THEME.textMuted, fontSize: '13px' }} onClick={() => startEdit(e.id, 'memo', e.memo)}>{editingCell?.id === e.id && editingCell?.field === 'memo' ? <input type="text" value={editValue} onChange={(ev) => setEditValue(ev.target.value)} onBlur={finishEdit} onKeyPress={(ev) => ev.key === 'Enter' && finishEdit()} autoFocus style={inputStyle} /> : (e.memo || '-')}</td>
-                  <td style={cellStyle}><button onClick={() => handleDelete(e.id)} style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', opacity: 0.5 }} onMouseOver={(ev) => ev.currentTarget.style.opacity = 1} onMouseOut={(ev) => ev.currentTarget.style.opacity = 0.5}><Trash2 size={16} color={THEME.danger} /></button></td>
-                </tr>
-              ))}
-              <tr style={{ background: `${THEME.danger}08` }}>
-                <td style={cellStyle}><input type="date" value={newRow.date} onChange={(e) => setNewRow({ ...newRow, date: e.target.value })} style={{ ...inputStyle, color: THEME.textSecondary }} /></td>
-                <td style={cellStyle}><input type="text" placeholder="담당자" value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })} style={{ ...inputStyle, color: THEME.textMuted }} /></td>
-                <td style={cellStyle}><input type="text" placeholder="지출항목" value={newRow.category} onChange={(e) => setNewRow({ ...newRow, category: e.target.value })} style={{ ...inputStyle, color: THEME.textMuted }} /></td>
-                <td style={cellStyle}><input type="number" placeholder="1" value={newRow.quantity} onChange={(e) => setNewRow({ ...newRow, quantity: e.target.value })} style={{ ...inputStyle, textAlign: 'center', color: THEME.textMuted }} /></td>
-                <td style={cellStyle}><input type="number" placeholder="단가" value={newRow.unitPrice} onChange={(e) => setNewRow({ ...newRow, unitPrice: e.target.value })} style={{ ...inputStyle, textAlign: 'right', color: THEME.textMuted }} /></td>
-                <td style={{ ...cellStyle, textAlign: 'right', color: THEME.textMuted }}>{formatCurrency((Number(newRow.quantity) || 1) * (Number(newRow.unitPrice) || 0))}</td>
-                <td style={cellStyle}><input type="text" placeholder="비고" value={newRow.memo} onChange={(e) => setNewRow({ ...newRow, memo: e.target.value })} onKeyPress={(e) => e.key === 'Enter' && handleSave(newRow)} style={{ ...inputStyle, color: THEME.textMuted }} /></td>
-                <td style={cellStyle}><button onClick={() => handleSave(newRow)} disabled={isLoading || !newRow.category || !newRow.unitPrice} style={{ background: THEME.danger, border: 'none', borderRadius: '6px', padding: '6px', cursor: 'pointer', opacity: (!newRow.category || !newRow.unitPrice) ? 0.3 : 1 }}><Plus size={16} color="white" /></button></td>
-              </tr>
-            </tbody>
-          </table>
+          <button onClick={() => setTab('expense')} style={tabStyle(tab === 'expense')}>
+            💸 지출
+          </button>
         </div>
+      </div>
+
+      {/* 콘텐츠 */}
+      <div style={{ background: THEME.bgSecondary, minHeight: 'calc(100vh - 180px)', padding: '24px' }}>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: THEME.textMuted }}>로딩 중...</div>
+        ) : tab === 'revenue' ? (
+          <RevenueTable
+            platforms={platforms}
+            channelsByPlatform={channelsByPlatform}
+            revenueData={revenueData}
+            months={months}
+            year={selectedYear}
+            spreadsheetId={spreadsheetId}
+            onReload={loadData}
+          />
+        ) : (
+          <ExpenseTable
+            expenseData={expenseData}
+            months={months}
+            year={selectedYear}
+            spreadsheetId={spreadsheetId}
+            onReload={loadData}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function SummaryCard({ icon, label, value, color }) {
+// ============================================
+// 수익 테이블 (스프레드시트 스타일)
+// ============================================
+function RevenueTable({ platforms, channelsByPlatform, revenueData, months, year, spreadsheetId, onReload }) {
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
+  // 셀 클릭 → 편집 시작
+  const startEdit = (platform, channel, month, currentAmount) => {
+    setEditingCell({ platform, channel, month });
+    setEditValue(currentAmount || '');
+  };
+
+  // 편집 완료 → 저장
+  const finishEdit = async () => {
+    if (!editingCell) return;
+
+    const { platform, channel, month } = editingCell;
+    const amount = Number(editValue) || 0;
+
+    // 기존 데이터 찾기
+    const existing = revenueData[platform]?.[channel]?.[month];
+
+    if (amount > 0) {
+      await callBackend('saveRevenue', {
+        spreadsheetId,
+        revenueData: {
+          id: existing?.id,
+          year,
+          month,
+          platform,
+          channelName: channel,
+          amount
+        }
+      });
+    } else if (existing?.id) {
+      // 금액이 0이면 삭제
+      await callBackend('deleteRevenue', { spreadsheetId, revenueId: existing.id });
+    }
+
+    setEditingCell(null);
+    setEditValue('');
+    onReload();
+  };
+
+  // 플랫폼별 월별 합계 계산
+  const getPlatformTotal = (platform, month) => {
+    const platformData = revenueData[platform] || {};
+    return Object.values(platformData).reduce((sum, channelData) => {
+      return sum + (channelData[month]?.amount || 0);
+    }, 0);
+  };
+
+  // 전체 월별 합계
+  const getMonthTotal = (month) => {
+    return platforms.reduce((sum, p) => sum + getPlatformTotal(p.name, month), 0);
+  };
+
+  // 스타일
+  const thStyle = {
+    padding: '12px 8px',
+    background: '#f8f9fa',
+    borderBottom: '2px solid #dee2e6',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#495057',
+    textAlign: 'center',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10
+  };
+
+  const tdStyle = {
+    padding: '8px',
+    borderBottom: '1px solid #e9ecef',
+    fontSize: '13px',
+    textAlign: 'right'
+  };
+
+  const inputStyle = {
+    width: '100%',
+    border: 'none',
+    background: '#fff3cd',
+    padding: '6px 8px',
+    fontSize: '13px',
+    textAlign: 'right',
+    outline: 'none',
+    borderRadius: '4px'
+  };
+
   return (
-    <div style={{ background: THEME.bgSecondary, borderRadius: '16px', padding: '20px', boxShadow: THEME.shadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>{icon}</div>
-        <span style={{ color: THEME.textSecondary, fontSize: '14px' }}>{label}</span>
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px', background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, width: '50px', textAlign: 'center' }}>연번</th>
+            <th style={{ ...thStyle, width: '80px' }}>KRW</th>
+            <th style={{ ...thStyle, width: '100px' }}>종류</th>
+            <th style={{ ...thStyle, width: '120px' }}>채널명</th>
+            {months.map(m => (
+              <th key={m} style={{ ...thStyle, width: '90px' }}>{m}월</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {platforms.map((platform, pIdx) => {
+            const platformChannels = channelsByPlatform[platform.name] || [];
+            
+            return (
+              <React.Fragment key={platform.name}>
+                {/* 채널 행들 */}
+                {platformChannels.map((channel, cIdx) => {
+                  const channelData = revenueData[platform.name]?.[channel.channelName] || {};
+                  
+                  return (
+                    <tr key={`${platform.name}-${channel.channelName}`} style={{ background: cIdx % 2 === 0 ? 'white' : '#fafafa' }}>
+                      <td style={{ ...tdStyle, textAlign: 'center', color: '#868e96' }}>{cIdx + 1}</td>
+                      {cIdx === 0 ? (
+                        <td rowSpan={platformChannels.length + 1} style={{ ...tdStyle, textAlign: 'center', background: '#f1f3f4', fontWeight: '600', verticalAlign: 'top', paddingTop: '16px' }}>
+                          {/* 아이콘 또는 라벨 */}
+                        </td>
+                      ) : null}
+                      {cIdx === 0 ? (
+                        <td rowSpan={platformChannels.length + 1} style={{ ...tdStyle, textAlign: 'center', background: '#f1f3f4', fontWeight: '600', verticalAlign: 'top', paddingTop: '16px' }}>
+                          {platform.name}
+                        </td>
+                      ) : null}
+                      <td style={{ ...tdStyle, textAlign: 'left', fontWeight: '500' }}>{channel.channelName}</td>
+                      {months.map(m => {
+                        const isEditing = editingCell?.platform === platform.name && editingCell?.channel === channel.channelName && editingCell?.month === m;
+                        const amount = channelData[m]?.amount || 0;
+
+                        return (
+                          <td
+                            key={m}
+                            style={{ ...tdStyle, cursor: 'pointer', background: isEditing ? '#fff3cd' : undefined }}
+                            onClick={() => !isEditing && startEdit(platform.name, channel.channelName, m, amount)}
+                          >
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={finishEdit}
+                                onKeyPress={(e) => e.key === 'Enter' && finishEdit()}
+                                autoFocus
+                                style={inputStyle}
+                              />
+                            ) : (
+                              <span style={{ color: amount > 0 ? '#212529' : '#ced4da' }}>
+                                {amount > 0 ? amount.toLocaleString() : '0'}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+
+                {/* TOTAL 행 */}
+                {platformChannels.length > 0 && (
+                  <tr style={{ background: '#e7f5ff' }}>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}></td>
+                    <td style={{ ...tdStyle, textAlign: 'center', fontWeight: '700', color: '#1971c2' }}>TOTAL</td>
+                    {months.map(m => (
+                      <td key={m} style={{ ...tdStyle, fontWeight: '700', color: '#1971c2' }}>
+                        {getPlatformTotal(platform.name, m).toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                )}
+
+                {/* 채널이 없는 플랫폼 */}
+                {platformChannels.length === 0 && (
+                  <tr style={{ background: '#fafafa' }}>
+                    <td style={{ ...tdStyle, textAlign: 'center', color: '#868e96' }}>-</td>
+                    <td style={{ ...tdStyle, textAlign: 'center', background: '#f1f3f4' }}></td>
+                    <td style={{ ...tdStyle, textAlign: 'center', background: '#f1f3f4', fontWeight: '600' }}>{platform.name}</td>
+                    <td style={{ ...tdStyle, textAlign: 'left', color: '#868e96' }}>채널 없음</td>
+                    {months.map(m => (
+                      <td key={m} style={{ ...tdStyle, color: '#ced4da' }}>-</td>
+                    ))}
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+
+          {/* 전체 합계 행 */}
+          <tr style={{ background: '#d3f9d8' }}>
+            <td colSpan={4} style={{ ...tdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#2f9e44' }}>
+              📊 총 매출 합계
+            </td>
+            {months.map(m => (
+              <td key={m} style={{ ...tdStyle, fontWeight: '700', fontSize: '14px', color: '#2f9e44' }}>
+                {getMonthTotal(m).toLocaleString()}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ============================================
+// 지출 테이블 (일별 입력 → 월별 합산)
+// ============================================
+function ExpenseTable({ expenseData, months, year, spreadsheetId, onReload }) {
+  const [newExpense, setNewExpense] = useState({ name: '', category: '', quantity: 1, unitPrice: '' });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // 지출 항목별로 그룹화 (이름+항목 기준)
+  const groupedExpenses = {};
+  expenseData.forEach(exp => {
+    const key = `${exp.name || '기타'}-${exp.category}`;
+    if (!groupedExpenses[key]) {
+      groupedExpenses[key] = {
+        name: exp.name || '기타',
+        category: exp.category,
+        quantity: exp.quantity,
+        unitPrice: exp.unitPrice,
+        monthlyTotals: {},
+        items: []
+      };
+      months.forEach(m => groupedExpenses[key].monthlyTotals[m] = 0);
+    }
+    groupedExpenses[key].items.push(exp);
+    if (exp.month) {
+      groupedExpenses[key].monthlyTotals[exp.month] += (exp.amount || 0);
+    }
+  });
+
+  const expenseRows = Object.values(groupedExpenses);
+
+  // 월별 전체 합계
+  const getMonthTotal = (month) => {
+    return expenseRows.reduce((sum, row) => sum + (row.monthlyTotals[month] || 0), 0);
+  };
+
+  // 새 지출 추가
+  const handleAddExpense = async () => {
+    if (!newExpense.category || !newExpense.unitPrice) return;
+
+    await callBackend('saveExpense', {
+      spreadsheetId,
+      expenseData: {
+        date: selectedDate,
+        name: newExpense.name,
+        category: newExpense.category,
+        quantity: Number(newExpense.quantity) || 1,
+        unitPrice: Number(newExpense.unitPrice)
+      }
+    });
+
+    setNewExpense({ name: '', category: '', quantity: 1, unitPrice: '' });
+    setShowAddModal(false);
+    onReload();
+  };
+
+  // 지출 삭제
+  const handleDelete = async (id) => {
+    if (!window.confirm('삭제하시겠습니까?')) return;
+    await callBackend('deleteExpense', { spreadsheetId, expenseId: id });
+    onReload();
+  };
+
+  // 스타일
+  const thStyle = {
+    padding: '12px 8px',
+    background: '#fff0f0',
+    borderBottom: '2px solid #ffc9c9',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#c92a2a',
+    textAlign: 'center',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10
+  };
+
+  const tdStyle = {
+    padding: '10px 8px',
+    borderBottom: '1px solid #e9ecef',
+    fontSize: '13px',
+    textAlign: 'right'
+  };
+
+  return (
+    <div>
+      {/* 추가 버튼 */}
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '14px', color: THEME.textMuted }}>
+          일별로 지출을 입력하면 월별로 자동 합산됩니다.
+        </span>
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#fa5252',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 16px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          <Plus size={18} /> 지출 추가
+        </button>
       </div>
-      <div style={{ color, fontSize: '24px', fontWeight: '700' }}>{value}</div>
+
+      {/* 지출 추가 모달 */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '400px' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: '18px' }}>💸 지출 추가</h3>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>지출일자</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{ width: '100%', padding: '10px', border: '1px solid #dee2e6', borderRadius: '8px', fontSize: '14px' }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>담당자(이름)</label>
+              <input
+                type="text"
+                placeholder="예: 김편집"
+                value={newExpense.name}
+                onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
+                style={{ width: '100%', padding: '10px', border: '1px solid #dee2e6', borderRadius: '8px', fontSize: '14px' }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>지출항목 *</label>
+              <input
+                type="text"
+                placeholder="예: 영상편집비"
+                value={newExpense.category}
+                onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                style={{ width: '100%', padding: '10px', border: '1px solid #dee2e6', borderRadius: '8px', fontSize: '14px' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>수량</label>
+                <input
+                  type="number"
+                  value={newExpense.quantity}
+                  onChange={(e) => setNewExpense({ ...newExpense, quantity: e.target.value })}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #dee2e6', borderRadius: '8px', fontSize: '14px' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>단가 *</label>
+                <input
+                  type="number"
+                  placeholder="20000"
+                  value={newExpense.unitPrice}
+                  onChange={(e) => setNewExpense({ ...newExpense, unitPrice: e.target.value })}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #dee2e6', borderRadius: '8px', fontSize: '14px' }}
+                />
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: '20px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center' }}>
+              <span style={{ color: '#868e96', fontSize: '13px' }}>합계 금액: </span>
+              <span style={{ fontSize: '18px', fontWeight: '700', color: '#fa5252' }}>
+                {formatCurrency((Number(newExpense.quantity) || 1) * (Number(newExpense.unitPrice) || 0))}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{ flex: 1, padding: '12px', border: '1px solid #dee2e6', borderRadius: '8px', background: 'white', fontSize: '14px', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddExpense}
+                disabled={!newExpense.category || !newExpense.unitPrice}
+                style={{
+                  flex: 1, padding: '12px', border: 'none', borderRadius: '8px',
+                  background: (!newExpense.category || !newExpense.unitPrice) ? '#ced4da' : '#fa5252',
+                  color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+                }}
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 테이블 */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px', background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: '50px' }}>연번</th>
+              <th style={{ ...thStyle, width: '100px' }}>이름</th>
+              <th style={{ ...thStyle, width: '120px' }}>지출</th>
+              <th style={{ ...thStyle, width: '60px' }}>수량</th>
+              <th style={{ ...thStyle, width: '80px' }}>단가</th>
+              {months.map(m => (
+                <th key={m} style={{ ...thStyle, width: '90px' }}>{m}월</th>
+              ))}
+              <th style={{ ...thStyle, width: '50px' }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {expenseRows.length === 0 ? (
+              <tr>
+                <td colSpan={17} style={{ ...tdStyle, textAlign: 'center', padding: '40px', color: '#868e96' }}>
+                  등록된 지출이 없습니다. 위의 "지출 추가" 버튼을 눌러 추가해주세요.
+                </td>
+              </tr>
+            ) : (
+              expenseRows.map((row, idx) => (
+                <tr key={idx} style={{ background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center', color: '#868e96' }}>{idx + 1}</td>
+                  <td style={{ ...tdStyle, textAlign: 'left' }}>{row.name}</td>
+                  <td style={{ ...tdStyle, textAlign: 'left', fontWeight: '500' }}>{row.category}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{row.quantity}</td>
+                  <td style={{ ...tdStyle }}>{row.unitPrice?.toLocaleString()}</td>
+                  {months.map(m => (
+                    <td key={m} style={{ ...tdStyle, color: row.monthlyTotals[m] > 0 ? '#212529' : '#ced4da' }}>
+                      {row.monthlyTotals[m] > 0 ? row.monthlyTotals[m].toLocaleString() : '0'}
+                    </td>
+                  ))}
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <button
+                      onClick={() => row.items[0]?.id && handleDelete(row.items[0].id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}
+                    >
+                      <Trash2 size={16} color="#fa5252" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+
+            {/* TOTAL 행 */}
+            <tr style={{ background: '#ffe3e3' }}>
+              <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#c92a2a' }}>
+                💸 TOTAL
+              </td>
+              {months.map(m => (
+                <td key={m} style={{ ...tdStyle, fontWeight: '700', fontSize: '14px', color: '#c92a2a' }}>
+                  {getMonthTotal(m).toLocaleString()}
+                </td>
+              ))}
+              <td style={tdStyle}></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* 상세 내역 (일별) */}
+      {expenseData.length > 0 && (
+        <div style={{ marginTop: '32px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: THEME.textPrimary }}>
+            📋 일별 상세 내역
+          </h3>
+          <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8f9fa' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid #e9ecef' }}>일자</th>
+                  <th style={{ padding: '10px', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid #e9ecef' }}>담당자</th>
+                  <th style={{ padding: '10px', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid #e9ecef' }}>지출항목</th>
+                  <th style={{ padding: '10px', textAlign: 'right', fontSize: '13px', borderBottom: '1px solid #e9ecef' }}>금액</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontSize: '13px', borderBottom: '1px solid #e9ecef' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenseData.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((exp, idx) => (
+                  <tr key={exp.id || idx}>
+                    <td style={{ padding: '10px', fontSize: '13px', borderBottom: '1px solid #f1f3f4' }}>
+                      {exp.date ? new Date(exp.date).toLocaleDateString('ko-KR') : '-'}
+                    </td>
+                    <td style={{ padding: '10px', fontSize: '13px', borderBottom: '1px solid #f1f3f4' }}>{exp.name || '-'}</td>
+                    <td style={{ padding: '10px', fontSize: '13px', borderBottom: '1px solid #f1f3f4' }}>{exp.category}</td>
+                    <td style={{ padding: '10px', fontSize: '13px', textAlign: 'right', fontWeight: '500', color: '#fa5252', borderBottom: '1px solid #f1f3f4' }}>
+                      {formatCurrency(exp.amount)}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #f1f3f4' }}>
+                      <button onClick={() => handleDelete(exp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>
+                        <Trash2 size={14} color="#fa5252" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
