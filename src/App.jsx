@@ -2,18 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { THEME } from './config';
 import { callBackend } from './api';
 
-// 페이지 컴포넌트들
-import LoginPage from './components/pages/LoginPage';
-import DashboardPage from './components/pages/DashboardPage';
-import MyPage from './components/pages/MyPage';
-import ChannelsPage from './components/pages/ChannelsPage';
-import RevenuePage from './components/pages/RevenuePage';
-import ContentsPage from './components/pages/ContentsPage';
-import FreelancersPage from './components/pages/FreelancersPage';
+// 페이지 컴포넌트들 (src/ 폴더에 직접 있는 경우)
+import LoginPage from './LoginPage';
+import DashboardPage from './DashboardPage';
+import MyPage from './MyPage';
+import ChannelsPage from './ChannelsPage';
+import RevenuePage from './RevenuePage';
+import ContentsPage from './ContentsPage';
+import FreelancersPage from './FreelancersPage';
 
 // 상세 페이지 컴포넌트들
-import RevenueDetailPage from './components/details/RevenueDetailPage';
-import ProductivityDetailPage from './components/details/ProductivityDetailPage';
+import RevenueDetailPage from './RevenueDetailPage';
+import ProductivityDetailPage from './ProductivityDetailPage';
 
 export default function App() {
   // ============================================
