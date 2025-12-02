@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Video, TrendingUp, FileText, Plus, Pencil, LogOut, Settings, ChevronRight } from 'lucide-react';
-import { THEME } from '../../config';
-import { formatCurrency } from '../../api';
-import { Footer, SummaryCard, LoadingSpinner } from '../common';
+import { THEME } from './config';
+import { formatCurrency } from './api';
+import { Footer, SummaryCard, LoadingSpinner } from './common';
 
 export default function DashboardPage({ data, user, onNavigate, onLogout, onUpdateUserName }) {
   const [showNameEdit, setShowNameEdit] = useState(false);
