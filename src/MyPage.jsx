@@ -1,7 +1,7 @@
 import React from 'react';
 import { Users, Wallet, FileText, UserCheck, ChevronRight } from 'lucide-react';
 import { THEME } from './config';
-import { Footer, PageHeader } from '../common';
+import { Footer, PageHeader } from './common';
 import { callBackend } from './api';
 
 export default function MyPage({ onNavigate, onBack }) {
