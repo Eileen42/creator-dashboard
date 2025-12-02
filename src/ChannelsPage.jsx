@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
-import { THEME } from '../../config';
-import { callBackend } from '../../api';
+import { THEME } from './config';
+import { callBackend } from './api';
 import { PageHeader, Footer, EmptyState, ModalWrapper, inputStyle, labelStyle } from '../common';
 
 export default function ChannelsPage({ channels, spreadsheetId, onReload, onBack, platformsAndChannels }) {
