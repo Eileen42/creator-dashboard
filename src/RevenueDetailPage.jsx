@@ -1,7 +1,7 @@
 import React from 'react';
-import { THEME } from '../../config';
-import { formatCurrency } from '../../api';
-import { PageHeader, Footer } from '../common';
+import { THEME } from './config';
+import { formatCurrency } from './api';
+import { PageHeader, Footer } from './common';
 
 export default function RevenueDetailPage({ data, revenues, expenses, onBack }) {
   if (!data) return null;
