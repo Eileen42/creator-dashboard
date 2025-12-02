@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { CONFIG, THEME } from '../../config';
+import { CONFIG, THEME } from './config';
+import { callBackend } from './api';;
 
 export default function LoginPage({ isLoading, error, googleLoaded, onGoogleLogin }) {
   const [buttonRendered, setButtonRendered] = useState(false);
